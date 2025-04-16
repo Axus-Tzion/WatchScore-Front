@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:watchscorefront/screens/login_screen.dart';
+import 'package:watchscorefront/screens/moviesRegister_screen.dart';
 
 void main() {
   runApp(const MainApp());
@@ -17,7 +18,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: Colors.deepPurple[50],
       ),
-      home: LoginScreen(),
+      home: MoviesRegister(),
     );
   }
 }
