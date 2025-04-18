@@ -20,10 +20,24 @@ class _SeriesRegisterState extends State<SeriesRegister> {
   final TextEditingController _calificacionController = TextEditingController();
   final TextEditingController _duracionController = TextEditingController();
   final TextEditingController _actorInputController = TextEditingController();
+  final List<String> _actores = [];
+  final List<String> _generos = [
+    'Acción',
+    'Aventura',
+    'Comedia',
+    'Drama',
+    'Fantasía',
+    'Terror',
+    'Ciencia Ficción',
+    'Romance',
+    'Suspenso',
+    'Animación',
+    'Documental',
+  ];
 
   bool _isLoading = false;
-  List<String> _actores = [];
   List<String> _sugerencias = [];
+  String? _generoSeleccionado;
 
   // crea el calendario
   Future<void> _selectDate(BuildContext context) async {
@@ -69,6 +83,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
         _capitulosController.text.isEmpty ||
         _sipnosisController.text.isEmpty ||
         _duracionController.text.isEmpty ||
+        _generoSeleccionado == null ||
         _actores.isEmpty ||
         _calificacionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,6 +108,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
           'temporadas': _temporadasController.text,
           'capitulos': _capitulosController.text,
           'duracion': _duracionController.text,
+          'genero': _generoSeleccionado,
           'sipnosis': _sipnosisController.text,
           'calificacion': _calificacionController.text,
           'actores': _actores,
@@ -161,6 +177,31 @@ class _SeriesRegisterState extends State<SeriesRegister> {
               decoration: const InputDecoration(
                 labelText: 'Director',
                 prefixIcon: Icon(Icons.person, color: Colors.deepPurple),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            DropdownButtonFormField<String>(
+              value: _generoSeleccionado,
+              items:
+                  _generos.map((String genero) {
+                    return DropdownMenuItem<String>(
+                      value: genero,
+                      child: Text(genero),
+                    );
+                  }).toList(),
+              onChanged: (String? nuevoValor) {
+                setState(() {
+                  _generoSeleccionado = nuevoValor;
+                });
+              },
+              decoration: const InputDecoration(
+                labelText: 'Género',
+                prefixIcon: Icon(
+                  Icons.theater_comedy_outlined,
+                  color: Colors.deepPurple,
+                ),
                 border: OutlineInputBorder(),
               ),
             ),
