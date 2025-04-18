@@ -34,7 +34,7 @@ class _SeriesListState extends State<SeriesList> {
         Uri.parse('http://127.0.0.1:8860/series/'),
       );
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {
           _series = data;
           _isLoading = false;
@@ -56,71 +56,138 @@ class _SeriesListState extends State<SeriesList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
+
+      // encabezado
       appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
         title: const Text(
           'Lista de Series',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600, //negrilla
+            fontStyle: FontStyle.italic, //cursiva
+            letterSpacing: 1.2,
+            color: Colors.white,
+          ),
         ),
-        backgroundColor: Colors.deepPurple,
       ),
 
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: TextField(
+      //Casilla de busqueda
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Buscar serie...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(
+                  Icons.search,
+                ), //funcionamiento (integrar falta )
+                filled: true, //cuadricula par que no se vea plano
+                fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey),
                 ),
               ),
-              enabled: false,
             ),
-          ),
 
-          Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                    ? Center(child: Text(_error!))
-                    : ListView.builder(
-                      itemCount: _series.length,
-                      itemBuilder: (context, index) {
-                        final serie = _series[index];
-                        return GestureDetector(
-                          onTap: () {
-                            // Al tocar una serie
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SeriesRegister(),
-                              ),
-                            );
-                          },
-                          child: Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
+            const SizedBox(height: 12),
+            Expanded(
+              child:
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _error != null
+                      ? Center(child: Text(_error!))
+                      : GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.72,
                             ),
-                            child: ListTile(
-                              title: Text(serie['titulo'] ?? 'Sin título'),
-                              subtitle: Text(
-                                'Director: ${serie['director'] ?? 'Desconocido'}\n'
-                                'Lanzamiento: ${serie['lanzamiento'] ?? 'N/A'}',
+                        itemCount: _series.length,
+                        itemBuilder: (context, index) {
+                          final serie = _series[index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SeriesList(),
+                                ),
+                              );
+                            },
+
+                            //Tarjetas de las series
+                            child: Card(
+                              color: Colors.white,
+                              shadowColor: Colors.deepPurple[200],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              isThreeLine: true,
-                              trailing: const Icon(Icons.chevron_right),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.deepPurple[50],
+                                      ),
+                                      padding: const EdgeInsets.all(10),
+                                      child: const Icon(
+                                        Icons.tv,
+                                        size: 40,
+                                        color: Colors.deepPurple,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      serie['titulo'] ?? 'Sin título',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Genero: ${serie['genero'] ?? 'N/A'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+
+                                    Text(
+                                      'Sinopsis: ${serie['sinopsis'] ?? 'Desconocida'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-          ),
-        ],
+                          );
+                        },
+                      ),
+            ),
+          ],
+        ),
       ),
     );
   }
