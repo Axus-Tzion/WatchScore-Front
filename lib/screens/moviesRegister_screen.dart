@@ -14,11 +14,17 @@ class _MoviesRegisterState extends State<MoviesRegister> {
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _directorController = TextEditingController();
   final TextEditingController _lanzamientoController = TextEditingController();
+  final TextEditingController _generoController = TextEditingController();
   final TextEditingController _sipnosisController = TextEditingController();
   final TextEditingController _calificacionController = TextEditingController();
   final TextEditingController _duracionController = TextEditingController();
   final TextEditingController _actorInputController = TextEditingController();
-  final List<String> _actores = [];
+
+  bool _isLoading = false;
+  String? _generoSeleccionado;
+  List<String> _actores = [];
+  List<String> _sugerencias = [];
+
   final List<String> _generos = [
     'Acción',
     'Aventura',
@@ -32,10 +38,6 @@ class _MoviesRegisterState extends State<MoviesRegister> {
     'Animación',
     'Documental',
   ];
-
-  bool _isLoading = false;
-  String? _generoSeleccionado;
-  List<String> _sugerencias = [];
 
   // crea el calendario
   Future<void> _selectDate(BuildContext context) async {
