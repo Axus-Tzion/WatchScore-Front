@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:watchscorefront/screens/login_screen.dart';
 import 'package:watchscorefront/screens/moviesRegister_screen.dart';
+import 'package:watchscorefront/screens/seriesList.dart';
 import 'package:watchscorefront/screens/seriesRegister_screen.dart';
 
 void main() {
@@ -19,7 +20,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: Colors.deepPurple[50],
       ),
-      home: SeriesRegister(),
+      home: SeriesList(),
     );
   }
 }
