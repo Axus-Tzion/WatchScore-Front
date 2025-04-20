@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:watchscorefront/screens/serieDetails_screen.dart';
 import 'package:watchscorefront/screens/seriesRegister_screen.dart';
 
 class SeriesList extends StatefulWidget {
@@ -118,7 +119,8 @@ class _SeriesListState extends State<SeriesList> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const SeriesList(),
+                                  builder:
+                                      (_) => SerieDetailScreen(serie: serie),
                                 ),
                               );
                             },
