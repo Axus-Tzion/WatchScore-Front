@@ -12,12 +12,14 @@ class MoviesRegister extends StatefulWidget {
 
 class _MoviesRegisterState extends State<MoviesRegister> {
   final TextEditingController _tituloController = TextEditingController();
-  final TextEditingController _directorController = TextEditingController();
+  final TextEditingController _directorInputController =
+      TextEditingController();
   final TextEditingController _lanzamientoController = TextEditingController();
   final TextEditingController _sipnosisController = TextEditingController();
   final TextEditingController _calificacionController = TextEditingController();
   final TextEditingController _duracionController = TextEditingController();
   final TextEditingController _actorInputController = TextEditingController();
+
   final List<String> _actores = [];
   final List<String> _generos = [
     'Acción',
@@ -35,9 +37,10 @@ class _MoviesRegisterState extends State<MoviesRegister> {
 
   bool _isLoading = false;
   String? _generoSeleccionado;
-  List<String> _sugerencias = [];
+  String? _directorSeleccionado;
+  List<String> _sugerenciasActor = [];
+  List<String> _sugerenciasDirector = [];
 
-  // crea el calendario
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -52,7 +55,6 @@ class _MoviesRegisterState extends State<MoviesRegister> {
     }
   }
 
-  // consume el api de los actores
   Future<void> _cargarActores() async {
     try {
       final response = await http.get(
@@ -61,7 +63,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _sugerencias =
+          _sugerenciasActor =
               data.map((actor) => actor['nombre'].toString()).toList();
         });
       }
@@ -72,10 +74,28 @@ class _MoviesRegisterState extends State<MoviesRegister> {
     }
   }
 
-  // valida que los campos no esten vacios
-  Future<void> _moviesRegister(BuildContext) async {
+  Future<void> _cargarDirector() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8860/director/'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _sugerenciasDirector =
+              data.map((director) => director['nombre'].toString()).toList();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error de conexión: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _moviesRegister(BuildContext context) async {
     if (_tituloController.text.isEmpty ||
-        _directorController.text.isEmpty ||
+        _directorSeleccionado == null ||
         _lanzamientoController.text.isEmpty ||
         _generoSeleccionado == null ||
         _sipnosisController.text.isEmpty ||
@@ -92,14 +112,13 @@ class _MoviesRegisterState extends State<MoviesRegister> {
       _isLoading = true;
     });
 
-    // consume la api del registro de peliculas
     try {
       final response = await http.post(
         Uri.parse('http://127.0.0.1:8860/peliculas/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'titulo': _tituloController.text,
-          'director': _directorController.text,
+          'director': _directorSeleccionado,
           'lanzamiento': _lanzamientoController.text,
           'genero': _generoSeleccionado,
           'duracion': _duracionController.text,
@@ -139,6 +158,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
   void initState() {
     super.initState();
     _cargarActores();
+    _cargarDirector();
   }
 
   @override
@@ -166,13 +186,40 @@ class _MoviesRegisterState extends State<MoviesRegister> {
             ),
             const SizedBox(height: 20),
 
-            TextField(
-              controller: _directorController,
-              decoration: const InputDecoration(
-                labelText: 'Director',
-                prefixIcon: Icon(Icons.person, color: Colors.deepPurple),
-                border: OutlineInputBorder(),
-              ),
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text == '') {
+                  return const Iterable<String>.empty();
+                }
+                return _sugerenciasDirector.where((String option) {
+                  return option.toLowerCase().contains(
+                    textEditingValue.text.toLowerCase(),
+                  );
+                });
+              },
+              onSelected: (String selection) {
+                setState(() {
+                  _directorSeleccionado = selection;
+                  _directorInputController.text = selection;
+                });
+              },
+              fieldViewBuilder: (
+                context,
+                controller,
+                focusNode,
+                onFieldSubmitted,
+              ) {
+                controller.text = _directorInputController.text;
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar Director',
+                    prefixIcon: Icon(Icons.person, color: Colors.deepPurple),
+                    border: OutlineInputBorder(),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 20),
 
@@ -254,7 +301,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
                 if (textEditingValue.text == '') {
                   return const Iterable<String>.empty();
                 }
-                return _sugerencias.where((String option) {
+                return _sugerenciasActor.where((String option) {
                   return option.toLowerCase().contains(
                     textEditingValue.text.toLowerCase(),
                   );

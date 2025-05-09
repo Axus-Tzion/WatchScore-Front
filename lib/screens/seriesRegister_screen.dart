@@ -12,7 +12,8 @@ class SeriesRegister extends StatefulWidget {
 
 class _SeriesRegisterState extends State<SeriesRegister> {
   final TextEditingController _tituloController = TextEditingController();
-  final TextEditingController _directorController = TextEditingController();
+  final TextEditingController _directorInputController =
+      TextEditingController();
   final TextEditingController _lanzamientoController = TextEditingController();
   final TextEditingController _temporadasController = TextEditingController();
   final TextEditingController _capitulosController = TextEditingController();
@@ -36,8 +37,10 @@ class _SeriesRegisterState extends State<SeriesRegister> {
   ];
 
   bool _isLoading = false;
-  List<String> _sugerencias = [];
   String? _generoSeleccionado;
+  String? _directorSeleccionado;
+  List<String> _sugerencias = [];
+  List<String> _sugerenciasDirector = [];
 
   // crea el calendario
   Future<void> _selectDate(BuildContext context) async {
@@ -74,10 +77,29 @@ class _SeriesRegisterState extends State<SeriesRegister> {
     }
   }
 
+  Future<void> _cargarDirector() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8860/director/'),
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _sugerenciasDirector =
+              data.map((director) => director['nombre'].toString()).toList();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error de conexión: ${e.toString()}')),
+      );
+    }
+  }
+
   // valida que los campos no esten vacios
   Future<void> _seriesRegister(BuildContext) async {
     if (_tituloController.text.isEmpty ||
-        _directorController.text.isEmpty ||
+        _directorSeleccionado == null ||
         _lanzamientoController.text.isEmpty ||
         _temporadasController.text.isEmpty ||
         _capitulosController.text.isEmpty ||
@@ -103,7 +125,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'titulo': _tituloController.text,
-          'director': _directorController.text,
+          'director': _directorSeleccionado,
           'lanzamiento': _lanzamientoController.text,
           'temporadas': _temporadasController.text,
           'capitulos': _capitulosController.text,
@@ -145,6 +167,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
   void initState() {
     super.initState();
     _cargarActores();
+    _cargarDirector();
   }
 
   @override
@@ -172,11 +195,51 @@ class _SeriesRegisterState extends State<SeriesRegister> {
             ),
             const SizedBox(height: 20),
 
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text == '') {
+                  return const Iterable<String>.empty();
+                }
+                return _sugerenciasDirector.where((String option) {
+                  return option.toLowerCase().contains(
+                    textEditingValue.text.toLowerCase(),
+                  );
+                });
+              },
+              onSelected: (String selection) {
+                setState(() {
+                  _directorSeleccionado = selection;
+                  _directorInputController.text = selection;
+                });
+              },
+              fieldViewBuilder: (
+                context,
+                controller,
+                focusNode,
+                onFieldSubmitted,
+              ) {
+                controller.text = _directorInputController.text;
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar Director',
+                    prefixIcon: Icon(Icons.person, color: Colors.deepPurple),
+                    border: OutlineInputBorder(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+
             TextField(
-              controller: _directorController,
+              controller: _duracionController,
               decoration: const InputDecoration(
-                labelText: 'Director',
-                prefixIcon: Icon(Icons.person, color: Colors.deepPurple),
+                labelText: 'Duración',
+                prefixIcon: Icon(
+                  Icons.access_alarms_outlined,
+                  color: Colors.deepPurple,
+                ),
                 border: OutlineInputBorder(),
               ),
             ),

@@ -9,29 +9,33 @@ class SerieDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<dynamic> actores = serie['actores'] ?? [];
 
+    // Obtener nombre del director, ya sea string o Map
+    String nombreDirector = '';
+    final director = serie['director'];
+    if (director is Map) {
+      nombreDirector = director['nombre'] ?? 'Desconocido';
+    } else if (director is String) {
+      nombreDirector = director;
+    } else {
+      nombreDirector = 'Desconocido';
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(backgroundColor: Colors.deepPurple),
-
+      appBar: AppBar(
+        title: const Text('Detalle de Serie'),
+        backgroundColor: Colors.deepPurple,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              height: 120,
-              width: 120,
-              decoration: BoxDecoration(
-                color: Colors.deepPurple[50],
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.deepPurple.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            
+            // Icono de la serie
+            CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.deepPurple[50],
               child: const Icon(Icons.tv, size: 60, color: Colors.deepPurple),
             ),
 
@@ -58,13 +62,14 @@ class SerieDetailScreen extends StatelessWidget {
             ),
 
             Text(
-              'Director: ${serie['director'] ?? 'Desconocido'}',
+              'Director: $nombreDirector',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
 
             const SizedBox(height: 16),
 
+            // Sinopsis y datos técnicos
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -98,7 +103,7 @@ class SerieDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Temporadas, capítulos, duración
+                  // Temporadas y capítulos
                   Row(
                     children: [
                       const Icon(
@@ -109,7 +114,9 @@ class SerieDetailScreen extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Temporadas: ${serie['temporadas'] ?? 'Desconocidas'} · Capitulos: ${serie['capitulos'] ?? 'Desconocido'} · Duracion por Capitulo: ${serie['duracionCapitulo'] ?? 'Desconocido'}',
+                          'Temporadas: ${serie['temporadas'] ?? 'Desconocidas'} · '
+                          'Capítulos: ${serie['capitulos'] ?? 'Desconocido'} · '
+                          'Duración por capítulo: ${serie['duracionCapitulo'] ?? 'Desconocido'}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
@@ -121,7 +128,7 @@ class SerieDetailScreen extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        Icons.numbers,
+                        Icons.star,
                         size: 20,
                         color: Colors.deepPurple,
                       ),
@@ -136,7 +143,7 @@ class SerieDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // Lista de actores
+            // Actores
             if (actores.isNotEmpty) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -157,14 +164,28 @@ class SerieDetailScreen extends StatelessWidget {
                     actores.map<Widget>((actor) {
                       final nombre =
                           actor is Map ? actor['nombre'] : actor.toString();
-                      return Chip(
-                        label: Text(nombre),
-                        backgroundColor: Colors.deepPurple[50],
-                        labelStyle: const TextStyle(color: Colors.deepPurple),
-                        avatar: const Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Colors.deepPurple,
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => ActorDetailScreen(
+                                    actor: actor,
+                                  ), // ✅ objeto completo
+                            ),
+                          );
+                        },
+                        child: Chip(
+                          label: Text(nombre),
+                          backgroundColor: Colors.deepPurple[50],
+                          labelStyle: const TextStyle(color: Colors.deepPurple),
+                          avatar: const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: Colors.deepPurple,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -176,7 +197,6 @@ class SerieDetailScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Botón Editar
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: Acción editar
@@ -195,8 +215,6 @@ class SerieDetailScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // Botón Eliminar
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: Acción eliminar
@@ -215,8 +233,6 @@ class SerieDetailScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // Botón Agregar a lista
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: Acción agregar a lista
@@ -240,6 +256,101 @@ class SerieDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ActorDetailScreen extends StatelessWidget {
+  final dynamic actor;
+
+  const ActorDetailScreen({super.key, required this.actor});
+
+  @override
+  Widget build(BuildContext context) {
+    final String nombre = actor['nombre'] ?? 'Nombre no disponible';
+    final String nacionalidad = actor['nacionalidad'] ?? 'No disponible';
+    final String fechaNacimiento = actor['fechaNacimiento'] ?? 'No disponible';
+    final String genero = actor['genero'] ?? 'No especificado';
+    final List<dynamic> peliculas = actor['peliculas'] ?? [];
+    final List<dynamic> series = actor['series'] ?? [];
+
+    return Scaffold(
+      appBar: AppBar(title: Text(nombre), backgroundColor: Colors.deepPurple),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              nombre,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _infoItem("Nacionalidad", nacionalidad),
+            _infoItem("Fecha de nacimiento", fechaNacimiento),
+            _infoItem("Género", genero),
+            const SizedBox(height: 20),
+            _listSection("Películas", peliculas),
+            const SizedBox(height: 20),
+            _listSection("Series", series),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Colors.deepPurple,
+            ),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
+        ],
+      ),
+    );
+  }
+
+  Widget _listSection(String title, List<dynamic> items) {
+    if (items.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.deepPurple,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...items.map((item) {
+          String titulo =
+              item is Map && item.containsKey('titulo')
+                  ? item['titulo']
+                  : item.toString();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('• $titulo', style: const TextStyle(fontSize: 16)),
+          );
+        }).toList(),
+      ],
     );
   }
 }
