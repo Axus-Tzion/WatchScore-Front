@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
 
-class SerieDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> serie;
+class MovieDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> movie;
 
-  const SerieDetailScreen({super.key, required this.serie});
+  const MovieDetailScreen({super.key, required this.movie});
 
   @override
   Widget build(BuildContext context) {
-    final List<dynamic> actores = serie['actores'] ?? [];
+    final List<dynamic> actores = movie['actores'] ?? [];
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(backgroundColor: Colors.deepPurple),
+      appBar: AppBar(
+        backgroundColor: Colors.deepPurple,
+        title: const Text('Detalles de la Película'), // Título en español
+      ),
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Icono de la serie
+            // Icono de la película
             Container(
               height: 120,
               width: 120,
@@ -33,14 +36,18 @@ class SerieDetailScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(Icons.tv, size: 60, color: Colors.deepPurple),
+              child: const Icon(
+                Icons.movie,
+                size: 60,
+                color: Colors.deepPurple,
+              ), // Icono cambiado a movie
             ),
 
             const SizedBox(height: 20),
 
             // Título
             Text(
-              serie['titulo'] ?? 'Sin título',
+              movie['titulo'] ?? 'Sin título',
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -53,13 +60,13 @@ class SerieDetailScreen extends StatelessWidget {
 
             // Género y Año
             Text(
-              '${serie['genero'] ?? 'Género desconocido'} · ${serie['lanzamiento'] ?? 'Año desconocido'}',
+              '${movie['genero'] ?? 'Género desconocido'} · ${movie['lanzamiento'] ?? 'Año desconocido'}',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
 
             Text(
-              'Director: ${serie['director'] ?? 'Desconocido'}',
+              'Director: ${movie['director'] ?? 'Desconocido'}',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
@@ -94,23 +101,23 @@ class SerieDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    serie['sinopsis'] ?? 'No disponible',
+                    movie['sinopsis'] ?? 'No disponible',
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
                   const SizedBox(height: 20),
 
-                  // Temporadas, capítulos, duración
+                  // Duración y detalles específicos de películas
                   Row(
                     children: [
                       const Icon(
-                        Icons.list,
+                        Icons.timer,
                         size: 20,
                         color: Colors.deepPurple,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Temporadas: ${serie['temporadas'] ?? 'Desconocidas'} · Capitulos: ${serie['capitulos'] ?? 'Desconocido'} · Duracion por Capitulo: ${serie['duracionCapitulo'] ?? 'Desconocido'}',
+                          'Duración: ${movie['duracion'] ?? 'Desconocida'}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
@@ -122,13 +129,13 @@ class SerieDetailScreen extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        Icons.numbers,
+                        Icons.star,
                         size: 20,
                         color: Colors.deepPurple,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Calificación: ${serie['calificacion'] ?? 'Desconocida'}',
+                        'Calificación: ${movie['calificacion'] ?? 'Desconocida'}',
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
@@ -137,7 +144,7 @@ class SerieDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // Lista de actores
+            // Lista de actores (conservado en español)
             if (actores.isNotEmpty) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -173,7 +180,7 @@ class SerieDetailScreen extends StatelessWidget {
               const SizedBox(height: 30),
             ],
 
-            // Botones de acción
+            // Botones de acción (conservados en español)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [

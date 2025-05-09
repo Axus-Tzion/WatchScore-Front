@@ -37,7 +37,6 @@ class _MoviesRegisterState extends State<MoviesRegister> {
   String? _generoSeleccionado;
   List<String> _sugerencias = [];
 
-  // crea el calendario
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,

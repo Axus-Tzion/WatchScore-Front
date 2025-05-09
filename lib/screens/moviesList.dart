@@ -1,21 +1,26 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:watchscorefront/screens/serieDetails_screen.dart';
-import 'package:watchscorefront/screens/seriesRegister_screen.dart';
+import 'package:watchscorefront/screens/movieDetails_screen.dart';
+import 'package:watchscorefront/screens/moviesRegister_screen.dart';
 
-class SeriesList extends StatefulWidget {
+class MoviesList extends StatefulWidget {
   final bool showOnlyPopular;
+  final bool showRecommendations;
 
-  const SeriesList({super.key, this.showOnlyPopular = false});
+  const MoviesList({
+    super.key,
+    this.showOnlyPopular = false,
+    this.showRecommendations = false,
+  });
 
   @override
-  State<SeriesList> createState() => _SeriesListState();
+  State<MoviesList> createState() => _MoviesListState();
 }
 
-class _SeriesListState extends State<SeriesList> {
-  List<dynamic> _series = [];
-  List<dynamic> _filteredSeries = [];
+class _MoviesListState extends State<MoviesList> {
+  List<dynamic> _movies = [];
+  List<dynamic> _filteredMovies = [];
   bool _isLoading = true;
   String? _error;
   final TextEditingController _searchController = TextEditingController();
@@ -23,10 +28,10 @@ class _SeriesListState extends State<SeriesList> {
   @override
   void initState() {
     super.initState();
-    _fetchSeries();
+    _fetchMovies();
   }
 
-  Future<void> _fetchSeries() async {
+  Future<void> _fetchMovies() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -34,27 +39,33 @@ class _SeriesListState extends State<SeriesList> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/series/'),
+        Uri.parse('http://127.0.0.1:8860/peliculas/'),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
 
-        // Aplicar filtro para series populares
-        List<dynamic> filteredSeries = data;
+        // Aplicar filtros según los parámetros
+        List<dynamic> filteredMovies = data;
+
         if (widget.showOnlyPopular) {
           // Filtra las primeras 5 como "populares" (ejemplo)
-          filteredSeries = data.take(5).toList();
+          filteredMovies = data.take(5).toList();
+        }
+
+        if (widget.showRecommendations) {
+          // Filtra algunas como recomendadas (ejemplo)
+          filteredMovies = data.where((movie) => movie['id'] % 3 == 0).toList();
         }
 
         setState(() {
-          _series = data;
-          _filteredSeries = filteredSeries;
+          _movies = data;
+          _filteredMovies = filteredMovies;
           _isLoading = false;
         });
       } else {
         setState(() {
-          _error = 'Error al cargar series: ${response.statusCode}';
+          _error = 'Error al cargar películas: ${response.statusCode}';
           _isLoading = false;
         });
       }
@@ -68,22 +79,21 @@ class _SeriesListState extends State<SeriesList> {
 
   @override
   Widget build(BuildContext context) {
-    final seriesToDisplay =
+    final moviesToDisplay =
         _searchController.text.isEmpty
-            ? _filteredSeries
-            : _filteredSeries
+            ? _filteredMovies
+            : _filteredMovies
                 .where(
-                  (serie) =>
-                      serie['titulo'].toString().toLowerCase().contains(
+                  (movie) =>
+                      movie['titulo'].toString().toLowerCase().contains(
                         _searchController.text.toLowerCase(),
                       ) ||
-                      serie['genero'].toString().toLowerCase().contains(
+                      movie['genero'].toString().toLowerCase().contains(
                         _searchController.text.toLowerCase(),
                       ) ||
-                      (serie['creador']?.toString().toLowerCase().contains(
-                            _searchController.text.toLowerCase(),
-                          ) ??
-                          false),
+                      movie['director'].toString().toLowerCase().contains(
+                        _searchController.text.toLowerCase(),
+                      ),
                 )
                 .toList();
 
@@ -93,7 +103,11 @@ class _SeriesListState extends State<SeriesList> {
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
         title: Text(
-          widget.showOnlyPopular ? 'Series Populares' : 'Lista de Series',
+          widget.showOnlyPopular
+              ? 'Películas Populares'
+              : widget.showRecommendations
+              ? 'Recomendaciones'
+              : 'Lista de Películas',
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w600,
@@ -107,12 +121,12 @@ class _SeriesListState extends State<SeriesList> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            if (!widget.showOnlyPopular)
+            if (!widget.showOnlyPopular && !widget.showRecommendations)
               TextField(
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Buscar serie...',
+                  hintText: 'Buscar película...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: Colors.white,
@@ -129,8 +143,8 @@ class _SeriesListState extends State<SeriesList> {
                       ? const Center(child: CircularProgressIndicator())
                       : _error != null
                       ? Center(child: Text(_error!))
-                      : seriesToDisplay.isEmpty
-                      ? const Center(child: Text('No se encontraron series'))
+                      : moviesToDisplay.isEmpty
+                      ? const Center(child: Text('No se encontraron películas'))
                       : GridView.builder(
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -139,16 +153,16 @@ class _SeriesListState extends State<SeriesList> {
                               crossAxisSpacing: 12,
                               childAspectRatio: 0.72,
                             ),
-                        itemCount: seriesToDisplay.length,
+                        itemCount: moviesToDisplay.length,
                         itemBuilder: (context, index) {
-                          final serie = seriesToDisplay[index];
+                          final movie = moviesToDisplay[index];
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (_) => SerieDetailScreen(serie: serie),
+                                      (_) => MovieDetailScreen(movie: movie),
                                 ),
                               );
                             },
@@ -170,14 +184,14 @@ class _SeriesListState extends State<SeriesList> {
                                       ),
                                       padding: const EdgeInsets.all(10),
                                       child: const Icon(
-                                        Icons.tv,
+                                        Icons.movie,
                                         size: 40,
                                         color: Colors.deepPurple,
                                       ),
                                     ),
                                     const SizedBox(height: 10),
                                     Text(
-                                      serie['titulo'] ?? 'Sin título',
+                                      movie['titulo'] ?? 'Sin título',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
@@ -188,7 +202,7 @@ class _SeriesListState extends State<SeriesList> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Genero: ${serie['genero'] ?? 'N/A'}',
+                                      'Género: ${movie['genero'] ?? 'N/A'}',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey[600],
@@ -197,7 +211,14 @@ class _SeriesListState extends State<SeriesList> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
-                                      'Sinopsis: ${serie['sinopsis'] ?? 'Desconocida'}',
+                                      'Duración: ${movie['duracion'] ?? 'Desconocida'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Director: ${movie['director'] ?? 'Desconocido'}',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey[600],
