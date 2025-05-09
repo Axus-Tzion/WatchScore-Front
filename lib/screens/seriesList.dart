@@ -34,6 +34,7 @@ class _SeriesListState extends State<SeriesList> {
       final response = await http.get(
         Uri.parse('http://127.0.0.1:8860/series/'),
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {

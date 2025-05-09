@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async'; // Importación añadida para TimeoutException
 import 'dart:convert';
-import 'package:watchscorefront/screens/register_screen.dart';
 import 'package:watchscorefront/screens/home_screen.dart';
+import 'package:watchscorefront/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,47 +19,69 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login(BuildContext context) async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa todos los campos')),
-      );
+      _showError('Por favor, completa todos los campos');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('http://127.0.0.1:8860/usuarios/LogIn'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse('http://127.0.0.1:8860/usuarios/LogIn'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': _emailController.text.trim(),
+              'contrasena': _passwordController.text.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: Credenciales incorrectas')),
-        );
-      }
+      _handleLoginResponse(response, context);
+    } on TimeoutException catch (e) {
+      // Ahora reconocido correctamente
+      _showError('Tiempo de espera agotado: ${e.message}');
+    } on http.ClientException catch (e) {
+      _showError('Error de conexión: ${e.message}');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de conexión: ${e.toString()}')),
-      );
+      _showError('Error inesperado: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _handleLoginResponse(http.Response response, BuildContext context) {
+    switch (response.statusCode) {
+      case 200:
+        try {
+          final userData = jsonDecode(response.body);
+          if (userData['email'] == null) {
+            throw const FormatException('Respuesta inválida del servidor');
+          }
+          Navigator.pushReplacementNamed(context, '/home', arguments: userData);
+        } on FormatException {
+          _showError('Formato de respuesta incorrecto');
+        }
+        break;
+      case 401:
+        _showError('Credenciales incorrectas');
+        break;
+      case 404:
+        _showError('Endpoint no encontrado');
+        break;
+      case 500:
+        _showError('Error interno del servidor');
+        break;
+      default:
+        _showError('Error desconocido (${response.statusCode})');
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -86,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 prefixIcon: Icon(Icons.email, color: Colors.deepPurple),
                 border: OutlineInputBorder(),
               ),
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 20),
             TextField(
@@ -119,14 +143,12 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed:
                   _isLoading
                       ? null
-                      : () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ),
-                        );
-                      },
+                      : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
+                      ),
               child: const Text(
                 '¿No tienes cuenta? Regístrate',
                 style: TextStyle(color: Colors.deepPurple),
