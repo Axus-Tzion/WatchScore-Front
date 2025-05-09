@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:watchscorefront/screens/moviesList.dart';
 import 'package:watchscorefront/screens/seriesList.dart';
 import 'package:watchscorefront/screens/profile_screen.dart';
+import 'package:watchscorefront/screens/universal_search_screen.dart';
 import 'package:watchscorefront/widgets/registerContent_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,21 +14,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  late Map<String, dynamic>
-  _userData; // Cambiado a Map para guardar todos los datos del usuario
+  late Map<String, dynamic> _userData;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Ahora recibimos todos los datos del usuario, no solo el email
     _userData =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
         {};
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   final List<Widget> _tabScreens = [
     const _HomeTabContent(),
-    const Placeholder(child: Center(child: Text('Pantalla de Películas'))),
+    const MoviesList(),
     const SeriesList(),
   ];
 
@@ -37,34 +44,62 @@ class _HomeScreenState extends State<HomeScreen> {
         MaterialPageRoute(builder: (context) => const RegisterContentScreen()),
       );
     } else if (index == 4) {
-      Navigator.pushNamed(
-        context,
-        '/profile',
-        arguments: _userData, // Pasamos todos los datos del usuario al perfil
-      );
+      Navigator.pushNamed(context, '/profile', arguments: _userData);
     } else {
       setState(() => _currentIndex = index);
     }
+  }
+
+  void _navigateToSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UniversalSearchScreen(userData: _userData),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WatchScore', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                '/profile',
-                arguments: _userData, // También accesible desde el ícono
-              );
-            },
+        title: const Text(
+          'WatchScore',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        backgroundColor: Colors.deepPurple,
+        actions: [
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.6,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Buscar películas, series, actores...',
+                  hintStyle: const TextStyle(color: Colors.white70),
+                  filled: true,
+                  fillColor: Colors.deepPurple[300],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search, color: Colors.white),
+                    onPressed: _navigateToSearch,
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
+                onSubmitted: (_) => _navigateToSearch(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _tabScreens[_currentIndex],
@@ -95,20 +130,72 @@ class _HomeTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SectionTitle('Películas populares'),
-        const SectionTitle('Series populares'),
-        SizedBox(height: 300, child: SeriesList()),
-        ElevatedButton(
-          onPressed:
-              () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SeriesList()),
-              ),
-          child: const Text('Ver todas las series'),
-        ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionTitle('Películas populares'),
+          SizedBox(height: 220, child: MoviesList(showOnlyPopular: true)),
+          const SectionTitle('Series populares'),
+          SizedBox(height: 220, child: SeriesList(showOnlyPopular: true)),
+          const SectionTitle('Recomendaciones para ti'),
+          SizedBox(height: 220, child: MoviesList(showRecommendations: true)),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MoviesList(),
+                        ),
+                      ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver todas las películas',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SeriesList(),
+                        ),
+                      ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver todas las series',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -121,7 +208,7 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Text(
         title,
         style: const TextStyle(
