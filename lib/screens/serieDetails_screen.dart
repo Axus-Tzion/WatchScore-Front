@@ -31,6 +31,7 @@ class SerieDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            
             // Icono de la serie
             CircleAvatar(
               radius: 60,

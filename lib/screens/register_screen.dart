@@ -11,6 +11,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _identificacionController =
+      TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _apellidoController = TextEditingController();
@@ -38,8 +40,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register(BuildContext context) async {
-    // Validar campos vacíos
-    if (_emailController.text.isEmpty ||
+    // Validar campos vacíos (ahora incluyendo identificación)
+    if (_identificacionController.text.isEmpty ||
+        _emailController.text.isEmpty ||
         _nombreController.text.isEmpty ||
         _apellidoController.text.isEmpty ||
         _celularController.text.isEmpty ||
@@ -61,6 +64,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Uri.parse('http://127.0.0.1:8860/usuarios/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'id':
+              _identificacionController.text, // Nuevo campo enviado al backend
           'email': _emailController.text,
           'nombre': _nombreController.text,
           'apellido': _apellidoController.text,
@@ -72,13 +77,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (response.statusCode == 200) {
-        // Registro exitoso
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
         Navigator.pop(context); // Regresar al login
       } else {
-        // Error en el registro
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error en registro: ${response.body}')),
         );
@@ -109,6 +112,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Nuevo campo de identificación (primero)
+            TextField(
+              controller: _identificacionController,
+              decoration: const InputDecoration(
+                labelText: 'Identificación',
+                prefixIcon: Icon(Icons.badge, color: Colors.deepPurple),
+                border: OutlineInputBorder(),
+                hintText: 'Ingrese su número de identificación',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _nombreController,
               decoration: const InputDecoration(
