@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:watchscorefront/screens/login_screen.dart';
+import 'package:watchscorefront/screens/userListsScreen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -21,11 +22,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _ciudadController;
   bool _isLoading = false;
   bool _isEditing = false;
+  bool _showPassword = false;
+  late TextEditingController _passwordController;
 
   @override
   void initState() {
     super.initState();
-    // Inicializamos los controladores con los datos recibidos
+    _initializeControllers();
+  }
+
+  void _initializeControllers() {
     _identificacionController = TextEditingController(
       text: widget.userData['identificacion']?.toString() ?? '',
     );
@@ -44,17 +50,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _ciudadController = TextEditingController(
       text: widget.userData['ciudad'] ?? '',
     );
+    _passwordController = TextEditingController();
   }
 
   @override
   void dispose() {
-    // Limpiamos los controladores
     _identificacionController.dispose();
     _emailController.dispose();
     _nombreController.dispose();
     _apellidoController.dispose();
     _celularController.dispose();
     _ciudadController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -62,27 +69,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final Map<String, dynamic> updateData = {
+        'identificacion': _identificacionController.text,
+        'email': _emailController.text,
+        'nombre': _nombreController.text,
+        'apellido': _apellidoController.text,
+        'celular': _celularController.text,
+        'ciudad': _ciudadController.text,
+      };
+
+      // Solo agregamos la contraseña si se proporcionó una nueva
+      if (_passwordController.text.isNotEmpty) {
+        updateData['password'] = _passwordController.text;
+      }
+
       final response = await http.put(
         Uri.parse('http://127.0.0.1:8860/usuarios/'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'identificacion': _identificacionController.text,
-          'email': _emailController.text,
-          'nombre': _nombreController.text,
-          'apellido': _apellidoController.text,
-          'celular': _celularController.text,
-          'ciudad': _ciudadController.text,
-        }),
+        body: jsonEncode(updateData),
       );
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Perfil actualizado correctamente')),
+          const SnackBar(
+            content: Text('Perfil actualizado correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
-        setState(() => _isEditing = false);
+        setState(() {
+          _isEditing = false;
+          _passwordController.clear();
+        });
 
-        // Actualizamos los datos locales después de una edición exitosa
-        widget.userData['identificacion'] = _identificacionController.text;
+        // Actualizar datos locales
         widget.userData['email'] = _emailController.text;
         widget.userData['nombre'] = _nombreController.text;
         widget.userData['apellido'] = _apellidoController.text;
@@ -90,12 +109,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.userData['ciudad'] = _ciudadController.text;
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al actualizar: ${response.body}')),
+          SnackBar(
+            content: Text('Error al actualizar: ${response.body}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de conexión: ${e.toString()}')),
+        SnackBar(
+          content: Text('Error de conexión: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -149,12 +174,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (_isEditing)
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () => setState(() => _isEditing = false),
+              onPressed:
+                  () => setState(() {
+                    _isEditing = false;
+                    _passwordController.clear();
+                    _initializeControllers(); // Resetear valores
+                  }),
             ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () => _logout(context),
-          ),
         ],
       ),
       body:
@@ -167,90 +193,213 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.deepPurple[100],
-                            child: const Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Colors.deepPurple,
-                            ),
-                          ),
+                          _buildProfileHeader(),
                           const SizedBox(height: 20),
-                          _buildProfileField(
-                            label: 'Identificación',
-                            controller: _identificacionController,
-                            enabled: false,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildProfileField(
-                            label: 'Nombre',
-                            controller: _nombreController,
-                            enabled: _isEditing,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildProfileField(
-                            label: 'Apellido',
-                            controller: _apellidoController,
-                            enabled: _isEditing,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildProfileField(
-                            label: 'Email',
-                            controller: _emailController,
-                            enabled: _isEditing,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildProfileField(
-                            label: 'Celular',
-                            controller: _celularController,
-                            enabled: _isEditing,
-                            keyboardType: TextInputType.phone,
-                          ),
-                          const SizedBox(height: 15),
-                          _buildProfileField(
-                            label: 'Ciudad',
-                            controller: _ciudadController,
-                            enabled: _isEditing,
-                          ),
-                          const SizedBox(height: 30),
-                          if (_isEditing)
-                            ElevatedButton(
-                              onPressed: _updateProfile,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
-                                  vertical: 15,
-                                ),
-                              ),
-                              child: const Text(
-                                'Guardar Cambios',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
+                          _buildProfileForm(),
+                          if (_isEditing) _buildPasswordField(),
+                          if (_isEditing) _buildSaveButton(),
                         ],
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: ElevatedButton.icon(
-                      onPressed: () => _logout(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      icon: const Icon(Icons.logout, color: Colors.white),
-                      label: const Text(
-                        'Cerrar Sesión',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                  ),
+                  _buildBottomActions(context),
                 ],
               ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.deepPurple[100],
+              child: Icon(
+                Icons.person,
+                size: 60,
+                color: Colors.deepPurple[800],
+              ),
+            ),
+            if (_isEditing)
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.camera_alt, color: Colors.white),
+                  onPressed: () {
+                    // Implementar lógica para cambiar foto de perfil
+                  },
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${widget.userData['nombre'] ?? ''} ${widget.userData['apellido'] ?? ''}',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
+        Text(
+          widget.userData['email'] ?? '',
+          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileForm() {
+    return Column(
+      children: [
+        _buildProfileField(
+          label: 'Identificación',
+          controller: _identificacionController,
+          enabled: false,
+        ),
+        const SizedBox(height: 15),
+        _buildProfileField(
+          label: 'Nombre',
+          controller: _nombreController,
+          enabled: _isEditing,
+        ),
+        const SizedBox(height: 15),
+        _buildProfileField(
+          label: 'Apellido',
+          controller: _apellidoController,
+          enabled: _isEditing,
+        ),
+        const SizedBox(height: 15),
+        _buildProfileField(
+          label: 'Email',
+          controller: _emailController,
+          enabled: _isEditing,
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 15),
+        _buildProfileField(
+          label: 'Celular',
+          controller: _celularController,
+          enabled: _isEditing,
+          keyboardType: TextInputType.phone,
+        ),
+        const SizedBox(height: 15),
+        _buildProfileField(
+          label: 'Ciudad',
+          controller: _ciudadController,
+          enabled: _isEditing,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return Column(
+      children: [
+        const SizedBox(height: 15),
+        TextField(
+          controller: _passwordController,
+          obscureText: !_showPassword,
+          decoration: InputDecoration(
+            labelText: 'Nueva Contraseña',
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.lock, color: Colors.deepPurple),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _showPassword ? Icons.visibility : Icons.visibility_off,
+                color: Colors.deepPurple,
+              ),
+              onPressed: () {
+                setState(() => _showPassword = !_showPassword);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        const Text(
+          'Dejar en blanco si no deseas cambiar la contraseña',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: ElevatedButton(
+        onPressed: _updateProfile,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.deepPurple,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: const Text(
+          'Guardar Cambios',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomActions(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: Border(top: BorderSide(color: Colors.grey[300]!)),
+      ),
+      child: Column(
+        children: [
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => UserListsScreen(userData: widget.userData),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple[100],
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: Icon(Icons.list, color: Colors.deepPurple[800]),
+            label: Text(
+              'Mis Listas',
+              style: TextStyle(color: Colors.deepPurple[800], fontSize: 16),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            onPressed: () => _logout(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[100],
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: Icon(Icons.logout, color: Colors.red[800]),
+            label: Text(
+              'Cerrar Sesión',
+              style: TextStyle(color: Colors.red[800], fontSize: 16),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -270,7 +419,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         prefixIcon: _getIconForField(label),
         filled: !enabled,
         fillColor: Colors.grey[200],
+        labelStyle: TextStyle(
+          color: enabled ? Colors.deepPurple : Colors.grey[600],
+        ),
       ),
+      style: TextStyle(color: enabled ? Colors.black : Colors.grey[600]),
     );
   }
 

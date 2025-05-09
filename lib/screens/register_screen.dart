@@ -40,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register(BuildContext context) async {
-    // Validar campos vacíos (ahora incluyendo identificación)
+    // Validar campos vacíos
     if (_identificacionController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _nombreController.text.isEmpty ||
@@ -55,6 +55,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // Validar que la identificación sea numérica
+    if (!RegExp(r'^[0-9]+$').hasMatch(_identificacionController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La identificación debe contener solo números'),
+        ),
+      );
+      return;
+    }
+
+    // Validar que el celular sea numérico
+    if (!RegExp(r'^[0-9]+$').hasMatch(_celularController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El celular debe contener solo números')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -64,27 +82,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Uri.parse('http://127.0.0.1:8860/usuarios/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'id':
-              _identificacionController.text, // Nuevo campo enviado al backend
+          'identificacion': int.parse(_identificacionController.text),
           'email': _emailController.text,
           'nombre': _nombreController.text,
           'apellido': _apellidoController.text,
-          'celular': _celularController.text,
+          'celular': int.parse(_celularController.text),
           'fechaNacimiento': _fechaNacimientoController.text,
           'ciudad': _ciudadController.text,
           'contrasena': _contrasenaController.text,
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Registro exitoso
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
-        Navigator.pop(context); // Regresar al login
+        Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en registro: ${response.body}')),
-        );
+        final errorResponse = jsonDecode(response.body);
+        final errorMessage =
+            errorResponse['message']?.toString() ?? 'Error desconocido';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $errorMessage')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,16 +133,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Nuevo campo de identificación (primero)
             TextField(
               controller: _identificacionController,
+              keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Identificación',
+                labelText: 'Número de Identificación',
                 prefixIcon: Icon(Icons.badge, color: Colors.deepPurple),
                 border: OutlineInputBorder(),
-                hintText: 'Ingrese su número de identificación',
               ),
-              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
             TextField(
