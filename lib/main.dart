@@ -3,6 +3,7 @@ import 'package:watchscorefront/screens/login_screen.dart';
 import 'package:watchscorefront/screens/moviesRegister_screen.dart';
 import 'package:watchscorefront/screens/seriesList.dart';
 import 'package:watchscorefront/screens/seriesRegister_screen.dart';
+import 'package:watchscorefront/widgets/registerContent_screen.dart';
 
 void main() {
   runApp(const MainApp());
@@ -20,7 +21,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: Colors.deepPurple[50],
       ),
-      home: SeriesList(),
+      home: RegisterContentScreen(),
     );
   }
 }
