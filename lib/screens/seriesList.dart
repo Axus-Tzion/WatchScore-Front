@@ -5,7 +5,9 @@ import 'package:watchscorefront/screens/serieDetails_screen.dart';
 import 'package:watchscorefront/screens/seriesRegister_screen.dart';
 
 class SeriesList extends StatefulWidget {
-  const SeriesList({super.key});
+  final bool showOnlyPopular;
+
+  const SeriesList({super.key, this.showOnlyPopular = false});
 
   @override
   State<SeriesList> createState() => _SeriesListState();
@@ -13,9 +15,9 @@ class SeriesList extends StatefulWidget {
 
 class _SeriesListState extends State<SeriesList> {
   List<dynamic> _series = [];
+  List<dynamic> _filteredSeries = [];
   bool _isLoading = true;
   String? _error;
-
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -37,8 +39,17 @@ class _SeriesListState extends State<SeriesList> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        // Aplicar filtro para series populares
+        List<dynamic> filteredSeries = data;
+        if (widget.showOnlyPopular) {
+          // Filtra las primeras 5 como "populares" (ejemplo)
+          filteredSeries = data.take(5).toList();
+        }
+
         setState(() {
           _series = data;
+          _filteredSeries = filteredSeries;
           _isLoading = false;
         });
       } else {
@@ -57,46 +68,60 @@ class _SeriesListState extends State<SeriesList> {
 
   @override
   Widget build(BuildContext context) {
+    final seriesToDisplay =
+        _searchController.text.isEmpty
+            ? _filteredSeries
+            : _filteredSeries
+                .where(
+                  (serie) =>
+                      serie['titulo'].toString().toLowerCase().contains(
+                        _searchController.text.toLowerCase(),
+                      ) ||
+                      serie['genero'].toString().toLowerCase().contains(
+                        _searchController.text.toLowerCase(),
+                      ) ||
+                      (serie['creador']?.toString().toLowerCase().contains(
+                            _searchController.text.toLowerCase(),
+                          ) ??
+                          false),
+                )
+                .toList();
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
-
-      // encabezado
       appBar: AppBar(
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
-        title: const Text(
-          'Lista de Series',
-          style: TextStyle(
+        title: Text(
+          widget.showOnlyPopular ? 'Series Populares' : 'Lista de Series',
+          style: const TextStyle(
             fontSize: 22,
-            fontWeight: FontWeight.w600, //negrilla
-            fontStyle: FontStyle.italic, //cursiva
+            fontWeight: FontWeight.w600,
+            fontStyle: FontStyle.italic,
             letterSpacing: 1.2,
             color: Colors.white,
           ),
         ),
       ),
-
-      //Casilla de busqueda
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar serie...',
-                prefixIcon: const Icon(
-                  Icons.search,
-                ), //funcionamiento (integrar falta )
-                filled: true, //cuadricula par que no se vea plano
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
+            if (!widget.showOnlyPopular)
+              TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Buscar serie...',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.grey),
+                  ),
                 ),
               ),
-            ),
-
             const SizedBox(height: 12),
             Expanded(
               child:
@@ -104,6 +129,8 @@ class _SeriesListState extends State<SeriesList> {
                       ? const Center(child: CircularProgressIndicator())
                       : _error != null
                       ? Center(child: Text(_error!))
+                      : seriesToDisplay.isEmpty
+                      ? const Center(child: Text('No se encontraron series'))
                       : GridView.builder(
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -112,9 +139,9 @@ class _SeriesListState extends State<SeriesList> {
                               crossAxisSpacing: 12,
                               childAspectRatio: 0.72,
                             ),
-                        itemCount: _series.length,
+                        itemCount: seriesToDisplay.length,
                         itemBuilder: (context, index) {
-                          final serie = _series[index];
+                          final serie = seriesToDisplay[index];
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -125,8 +152,6 @@ class _SeriesListState extends State<SeriesList> {
                                 ),
                               );
                             },
-
-                            //Tarjetas de las series
                             child: Card(
                               color: Colors.white,
                               shadowColor: Colors.deepPurple[200],
@@ -150,7 +175,6 @@ class _SeriesListState extends State<SeriesList> {
                                         color: Colors.deepPurple,
                                       ),
                                     ),
-
                                     const SizedBox(height: 10),
                                     Text(
                                       serie['titulo'] ?? 'Sin título',
@@ -162,7 +186,6 @@ class _SeriesListState extends State<SeriesList> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-
                                     const SizedBox(height: 8),
                                     Text(
                                       'Genero: ${serie['genero'] ?? 'N/A'}',
@@ -173,7 +196,6 @@ class _SeriesListState extends State<SeriesList> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-
                                     Text(
                                       'Sinopsis: ${serie['sinopsis'] ?? 'Desconocida'}',
                                       style: TextStyle(
