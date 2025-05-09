@@ -20,7 +20,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: Colors.deepPurple[50],
       ),
-      home: SeriesRegister(),
+      home: SeriesList(),
     );
   }
 }
