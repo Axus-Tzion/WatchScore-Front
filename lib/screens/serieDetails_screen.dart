@@ -65,7 +65,6 @@ class SerieDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Tarjeta de información
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
