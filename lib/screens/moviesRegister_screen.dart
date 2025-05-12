@@ -122,7 +122,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
           'lanzamiento': _lanzamientoController.text,
           'genero': _generoSeleccionado,
           'duracion': _duracionController.text,
-          'sipnosis': _sipnosisController.text,
+          'sinopsis': _sipnosisController.text,
           'calificacion': _calificacionController.text,
           'actores': _actores,
         }),
