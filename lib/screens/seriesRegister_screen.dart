@@ -61,7 +61,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
   Future<void> _cargarActores() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/actores/'),
+        Uri.parse('https://watchscore-1.onrender.com/actores/'),
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -80,7 +80,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
   Future<void> _cargarDirector() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/director/'),
+        Uri.parse('https://watchscore-1.onrender.com/director/'),
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -121,7 +121,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
     // consume la api del registro de series
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8860/series/'),
+        Uri.parse('http://localhost:8860/series/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'titulo': _tituloController.text,
@@ -129,7 +129,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
           'lanzamiento': _lanzamientoController.text,
           'temporadas': _temporadasController.text,
           'capitulos': _capitulosController.text,
-          'duracion': _duracionController.text,
+          'duracionCapitulo': _duracionController.text,
           'genero': _generoSeleccionado,
           'sinopsis': _sipnosisController.text,
           'calificacion': _calificacionController.text,
@@ -144,6 +144,10 @@ class _SeriesRegisterState extends State<SeriesRegister> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const SeriesRegister()),
+        );
+      } else if (response.statusCode == 409) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La serie ya está registrada')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -229,19 +233,6 @@ class _SeriesRegisterState extends State<SeriesRegister> {
                   ),
                 );
               },
-            ),
-            const SizedBox(height: 20),
-
-            TextField(
-              controller: _duracionController,
-              decoration: const InputDecoration(
-                labelText: 'Duración',
-                prefixIcon: Icon(
-                  Icons.access_alarms_outlined,
-                  color: Colors.deepPurple,
-                ),
-                border: OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: 20),
 

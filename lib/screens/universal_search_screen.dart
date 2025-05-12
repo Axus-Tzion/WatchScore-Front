@@ -30,12 +30,12 @@ class _UniversalSearchScreenState extends State<UniversalSearchScreen> {
     try {
       // 1. Cargar todas las películas (usando tu endpoint existente)
       final moviesResponse = await http.get(
-        Uri.parse('http://127.0.0.1:8860/peliculas/'),
+        Uri.parse('https://watchscore-1.onrender.com/peliculas/'),
       );
 
       // 2. Cargar todas las series (usando tu endpoint existente)
       final seriesResponse = await http.get(
-        Uri.parse('http://127.0.0.1:8860/series/'),
+        Uri.parse('https://watchscore-1.onrender.com/series/'),
       );
 
       if (moviesResponse.statusCode == 200 &&

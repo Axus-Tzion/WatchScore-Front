@@ -23,7 +23,7 @@ class _DirectorRegisterState extends State<DirectorRegister> {
 
   Future<void> _registrarDirector() async {
     setState(() => _isLoading = true);
-    final url = Uri.parse('http://127.0.0.1:8860/director/');
+    final url = Uri.parse('https://watchscore-1.onrender.com/director/');
 
     try {
       final response = await http.post(

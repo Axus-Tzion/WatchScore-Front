@@ -34,7 +34,7 @@ class _SeriesListState extends State<SeriesList> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/series/'),
+        Uri.parse('https://watchscore-1.onrender.com/series/'),
       );
 
       if (response.statusCode == 200) {

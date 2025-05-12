@@ -58,7 +58,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
   Future<void> _cargarActores() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/actores/'),
+        Uri.parse('https://watchscore-1.onrender.com/actores/'),
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -77,7 +77,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
   Future<void> _cargarDirector() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/director/'),
+        Uri.parse('https://watchscore-1.onrender.com/director/'),
       );
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -94,6 +94,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
   }
 
   Future<void> _moviesRegister(BuildContext context) async {
+    // Verificar que todos los campos estén completos
     if (_tituloController.text.isEmpty ||
         _directorSeleccionado == null ||
         _lanzamientoController.text.isEmpty ||
@@ -114,7 +115,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8860/peliculas/'),
+        Uri.parse('http://localhost:8860/peliculas/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'titulo': _tituloController.text,
@@ -135,6 +136,10 @@ class _MoviesRegisterState extends State<MoviesRegister> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MoviesRegister()),
+        );
+      } else if (response.statusCode == 409) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La película ya está registrada')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

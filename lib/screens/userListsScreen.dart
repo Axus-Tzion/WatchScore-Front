@@ -33,7 +33,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
     try {
       // Usamos el mismo cliente para mantener las cookies
       final response = await _httpClient.get(
-        Uri.parse('http://127.0.0.1:8860/listas/mis'),
+        Uri.parse('https://watchscore-1.onrender.com/listas/mis'),
       );
 
       if (response.statusCode == 200) {

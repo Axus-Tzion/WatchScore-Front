@@ -84,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       final response = await http.put(
-        Uri.parse('http://127.0.0.1:8860/usuarios/'),
+        Uri.parse('https://watchscore-1.onrender.com/usuarios/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(updateData),
       );

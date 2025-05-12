@@ -39,7 +39,7 @@ class _MoviesListState extends State<MoviesList> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8860/peliculas/'),
+        Uri.parse('https://watchscore-1.onrender.com/peliculas/'),
       );
 
       if (response.statusCode == 200) {

@@ -23,7 +23,7 @@ class _ActorRegisterState extends State<ActorRegister> {
 
   Future<void> _registrarActor() async {
     setState(() => _isLoading = true);
-    final url = Uri.parse('http://127.0.0.1:8860/actores/');
+    final url = Uri.parse('https://watchscore-1.onrender.com/actores/');
 
     try {
       final response = await http.post(
