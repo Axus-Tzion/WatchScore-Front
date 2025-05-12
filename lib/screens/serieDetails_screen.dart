@@ -9,16 +9,9 @@ class SerieDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<dynamic> actores = serie['actores'] ?? [];
 
-    // Obtener nombre del director, ya sea string o Map
-    String nombreDirector = '';
+    // Obtener director (puede ser Map o String)
     final director = serie['director'];
-    if (director is Map) {
-      nombreDirector = director['nombre'] ?? 'Desconocido';
-    } else if (director is String) {
-      nombreDirector = director;
-    } else {
-      nombreDirector = 'Desconocido';
-    }
+    final bool isDirectorMap = director is Map;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -31,7 +24,6 @@ class SerieDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            
             // Icono de la serie
             CircleAvatar(
               radius: 60,
@@ -61,10 +53,32 @@ class SerieDetailScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
 
-            Text(
-              'Director: $nombreDirector',
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-              textAlign: TextAlign.center,
+            // Director (clicable si es Map)
+            InkWell(
+              onTap:
+                  isDirectorMap
+                      ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => PersonDetailScreen(
+                                  person: Map<String, dynamic>.from(director),
+                                  type: 'Director',
+                                ),
+                          ),
+                        );
+                      }
+                      : null,
+              child: Text(
+                'Director: ${isDirectorMap ? director['nombre'] ?? 'Desconocido' : director ?? 'Desconocido'}',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDirectorMap ? Colors.deepPurple : Colors.grey[700],
+                  decoration: isDirectorMap ? TextDecoration.underline : null,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -143,7 +157,7 @@ class SerieDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // Actores
+            // Actores (clicables)
             if (actores.isNotEmpty) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -162,29 +176,37 @@ class SerieDetailScreen extends StatelessWidget {
                 runSpacing: 10,
                 children:
                     actores.map<Widget>((actor) {
+                      final bool isActorMap = actor is Map;
                       final nombre =
-                          actor is Map ? actor['nombre'] : actor.toString();
+                          isActorMap ? actor['nombre'] : actor.toString();
 
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => ActorDetailScreen(
-                                    actor: actor,
-                                  ), // ✅ objeto completo
-                            ),
-                          );
-                        },
-                        child: Chip(
-                          label: Text(nombre),
-                          backgroundColor: Colors.deepPurple[50],
-                          labelStyle: const TextStyle(color: Colors.deepPurple),
-                          avatar: const Icon(
-                            Icons.person,
-                            size: 18,
-                            color: Colors.deepPurple,
+                      return InkWell(
+                        onTap:
+                            isActorMap
+                                ? () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => PersonDetailScreen(
+                                            person: Map<String, dynamic>.from(
+                                              actor,
+                                            ),
+                                            type: 'Actor',
+                                          ),
+                                    ),
+                                  );
+                                }
+                                : null,
+                        child: Text(
+                          nombre,
+                          style: TextStyle(
+                            color:
+                                isActorMap
+                                    ? Colors.deepPurple
+                                    : Colors.grey[700],
+                            decoration:
+                                isActorMap ? TextDecoration.underline : null,
                           ),
                         ),
                       );
@@ -198,9 +220,7 @@ class SerieDetailScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Acción editar
-                  },
+                  onPressed: () {},
                   icon: const Icon(Icons.edit),
                   label: const Text("Editar"),
                   style: ElevatedButton.styleFrom(
@@ -216,9 +236,7 @@ class SerieDetailScreen extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Acción eliminar
-                  },
+                  onPressed: () {},
                   icon: const Icon(Icons.delete),
                   label: const Text("Eliminar"),
                   style: ElevatedButton.styleFrom(
@@ -234,9 +252,7 @@ class SerieDetailScreen extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Acción agregar a lista
-                  },
+                  onPressed: () {},
                   icon: const Icon(Icons.playlist_add),
                   label: const Text("A lista"),
                   style: ElevatedButton.styleFrom(
@@ -260,19 +276,24 @@ class SerieDetailScreen extends StatelessWidget {
   }
 }
 
-class ActorDetailScreen extends StatelessWidget {
-  final dynamic actor;
+// Pantalla genérica para detalles de Actor/Director
+class PersonDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> person;
+  final String type; // 'Actor' o 'Director'
 
-  const ActorDetailScreen({super.key, required this.actor});
+  const PersonDetailScreen({
+    super.key,
+    required this.person,
+    required this.type,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final String nombre = actor['nombre'] ?? 'Nombre no disponible';
-    final String nacionalidad = actor['nacionalidad'] ?? 'No disponible';
-    final String fechaNacimiento = actor['fechaNacimiento'] ?? 'No disponible';
-    final String genero = actor['genero'] ?? 'No especificado';
-    final List<dynamic> peliculas = actor['peliculas'] ?? [];
-    final List<dynamic> series = actor['series'] ?? [];
+    final String nombre = person['nombre'] ?? 'Nombre no disponible';
+    final String nacionalidad = person['nacionalidad'] ?? 'No disponible';
+    final String fechaNacimiento = person['fechaNacimiento'] ?? 'No disponible';
+    final String genero = person['genero'] ?? 'No especificado';
+    final List<dynamic> trabajos = person['series'] ?? [];
 
     return Scaffold(
       appBar: AppBar(title: Text(nombre), backgroundColor: Colors.deepPurple),
@@ -281,29 +302,74 @@ class ActorDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              nombre,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
-              ),
+            // Nombre y tipo (Actor/Director)
+            Row(
+              children: [
+                Text(
+                  nombre,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepPurple,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Chip(
+                  label: Text(type),
+                  backgroundColor: Colors.deepPurple[50],
+                  labelStyle: const TextStyle(color: Colors.deepPurple),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
-            _infoItem("Nacionalidad", nacionalidad),
-            _infoItem("Fecha de nacimiento", fechaNacimiento),
-            _infoItem("Género", genero),
+
+            // Información básica
+            _InfoRow(label: 'Nacionalidad', value: nacionalidad),
+            _InfoRow(label: 'Fecha de nacimiento', value: fechaNacimiento),
+            _InfoRow(label: 'Género', value: genero),
             const SizedBox(height: 20),
-            _listSection("Películas", peliculas),
-            const SizedBox(height: 20),
-            _listSection("Series", series),
+
+            // Trabajos (series o películas)
+            if (trabajos.isNotEmpty) ...[
+              Text(
+                type == 'Actor' ? 'Series/Películas' : 'Series dirigidas',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.deepPurple,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...trabajos.map((trabajo) {
+                String titulo =
+                    trabajo is Map
+                        ? trabajo['titulo'] ?? trabajo.toString()
+                        : trabajo.toString();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    '• $titulo',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                );
+              }).toList(),
+            ],
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _infoItem(String label, String value) {
+// Widget reutilizable para filas de información
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -320,37 +386,6 @@ class ActorDetailScreen extends StatelessWidget {
           Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
         ],
       ),
-    );
-  }
-
-  Widget _listSection(String title, List<dynamic> items) {
-    if (items.isEmpty) {
-      return const SizedBox();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.deepPurple,
-          ),
-        ),
-        const SizedBox(height: 10),
-        ...items.map((item) {
-          String titulo =
-              item is Map && item.containsKey('titulo')
-                  ? item['titulo']
-                  : item.toString();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text('• $titulo', style: const TextStyle(fontSize: 16)),
-          );
-        }).toList(),
-      ],
     );
   }
 }

@@ -131,7 +131,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
           'capitulos': _capitulosController.text,
           'duracion': _duracionController.text,
           'genero': _generoSeleccionado,
-          'sipnosis': _sipnosisController.text,
+          'sinopsis': _sipnosisController.text,
           'calificacion': _calificacionController.text,
           'actores': _actores,
         }),
