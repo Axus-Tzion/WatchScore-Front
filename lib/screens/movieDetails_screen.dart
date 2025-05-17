@@ -1,9 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:watchscorefront/screens/editMovie_screen.dart';
+import 'package:watchscorefront/screens/editSerie_screen.dart';
 
-class MovieDetailScreen extends StatelessWidget {
+class MovieDetailScreen extends StatefulWidget {
   final Map<String, dynamic> movie;
 
   const MovieDetailScreen({super.key, required this.movie});
+
+  @override
+  State<MovieDetailScreen> createState() => _MovieDetailScreenState();
+}
+
+class _MovieDetailScreenState extends State<MovieDetailScreen> {
+  late Map<String, dynamic> movie;
+
+  @override
+  void initState() {
+    super.initState();
+    movie = widget.movie;
+  }
+
+  void _confirmarEliminacion() async {
+    final confirmacion = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirmar eliminación'),
+            content: const Text(
+              '¿Estás segura de que deseas eliminar esta pelicula?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Eliminar'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmacion == true) {
+      await _eliminarSerie();
+    }
+  }
+
+  Future<void> _eliminarSerie() async {
+    final id = movie['id'];
+    final url = Uri.parse('http://localhost:8860/peliculas/eliminar/$id');
+
+    try {
+      final response = await http.delete(url);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder:
+                (_) => AlertDialog(
+                  title: const Text('Eliminación exitosa'),
+                  content: const Text(
+                    'La película ha sido eliminada correctamente.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Aceptar'),
+                    ),
+                  ],
+                ),
+          );
+          if (mounted) Navigator.pop(context, true);
+        }
+      } else {
+        _mostrarError('Error al eliminar la pelicula. Intenta de nuevo.');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión al eliminar la pelicula.');
+    }
+  }
+
+  void _mostrarError(String mensaje) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(mensaje),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +118,6 @@ class MovieDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Icono de la película
             CircleAvatar(
               radius: 60,
               backgroundColor: Colors.deepPurple[50],
@@ -32,10 +127,7 @@ class MovieDetailScreen extends StatelessWidget {
                 color: Colors.deepPurple,
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Título
             Text(
               movie['titulo'] ?? 'Sin título',
               style: const TextStyle(
@@ -45,17 +137,12 @@ class MovieDetailScreen extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 10),
-
-            // Género y Año
             Text(
               '${movie['genero'] ?? 'Género desconocido'} · ${movie['lanzamiento'] ?? 'Año desconocido'}',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
-
-            // Director (clicable si es Map)
             InkWell(
               onTap:
                   isDirectorMap
@@ -82,10 +169,7 @@ class MovieDetailScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Sinopsis y datos técnicos
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -114,12 +198,10 @@ class MovieDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    movie['sinopsis'] ?? 'No disponible',
+                    movie['sipnosis'] ?? 'No disponible',
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
                   const SizedBox(height: 20),
-
-                  // Duración
                   Row(
                     children: [
                       const Icon(
@@ -137,8 +219,6 @@ class MovieDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-
-                  // Calificación
                   Row(
                     children: [
                       const Icon(
@@ -156,8 +236,6 @@ class MovieDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Actores (clicables)
             if (actores.isNotEmpty) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -214,13 +292,23 @@ class MovieDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 30),
             ],
-
-            // Botones de acción
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final updatedMovie = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MoviesEdit(idPelicula: movie['id']),
+                      ),
+                    );
+                    if (updatedMovie != null) {
+                      setState(() {
+                        movie = updatedMovie;
+                      });
+                    }
+                  },
                   icon: const Icon(Icons.edit),
                   label: const Text("Editar"),
                   style: ElevatedButton.styleFrom(
@@ -236,7 +324,7 @@ class MovieDetailScreen extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _confirmarEliminacion,
                   icon: const Icon(Icons.delete),
                   label: const Text("Eliminar"),
                   style: ElevatedButton.styleFrom(
@@ -276,7 +364,6 @@ class MovieDetailScreen extends StatelessWidget {
   }
 }
 
-// Reutiliza la misma clase PersonDetailScreen de SerieDetailScreen
 class PersonDetailScreen extends StatelessWidget {
   final Map<String, dynamic> person;
   final String type;
@@ -322,12 +409,10 @@ class PersonDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
             _InfoRow(label: 'Nacionalidad', value: nacionalidad),
             _InfoRow(label: 'Fecha de nacimiento', value: fechaNacimiento),
             _InfoRow(label: 'Género', value: genero),
             const SizedBox(height: 20),
-
             if (trabajos.isNotEmpty) ...[
               Text(
                 type == 'Actor' ? 'Películas/Series' : 'Películas dirigidas',
@@ -363,24 +448,16 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({super.key, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-              color: Colors.deepPurple,
-            ),
-          ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
+          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+          Expanded(child: Text(value)),
         ],
       ),
     );

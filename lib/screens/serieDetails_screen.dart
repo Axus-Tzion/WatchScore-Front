@@ -1,9 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:watchscorefront/screens/editSerie_screen.dart';
 
-class SerieDetailScreen extends StatelessWidget {
+class SerieDetailScreen extends StatefulWidget {
   final Map<String, dynamic> serie;
 
   const SerieDetailScreen({super.key, required this.serie});
+
+  @override
+  State<SerieDetailScreen> createState() => _SerieDetailScreenState();
+}
+
+class _SerieDetailScreenState extends State<SerieDetailScreen> {
+  late Map<String, dynamic> serie;
+
+  @override
+  void initState() {
+    super.initState();
+    serie = widget.serie;
+  }
+
+  void _confirmarEliminacion() async {
+    final confirmacion = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirmar eliminación'),
+            content: const Text(
+              '¿Estás segura de que deseas eliminar esta serie?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Eliminar'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmacion == true) {
+      await _eliminarSerie();
+    }
+  }
+
+  Future<void> _eliminarSerie() async {
+    final id = serie['id'];
+    final url = Uri.parse('http://localhost:8860/series/eliminar/$id');
+
+    try {
+      final response = await http.delete(url);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder:
+                (_) => AlertDialog(
+                  title: const Text('Eliminación exitosa'),
+                  content: const Text(
+                    'La serie ha sido eliminada correctamente.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Aceptar'),
+                    ),
+                  ],
+                ),
+          );
+          if (mounted) Navigator.pop(context, true);
+        }
+      } else {
+        _mostrarError('Error al eliminar la serie. Intenta de nuevo.');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión al eliminar la serie.');
+    }
+  }
+
+  void _mostrarError(String mensaje) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(mensaje),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +119,12 @@ class SerieDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Icono de la serie
+            // Icono
             CircleAvatar(
               radius: 60,
               backgroundColor: Colors.deepPurple[50],
               child: const Icon(Icons.tv, size: 60, color: Colors.deepPurple),
             ),
-
             const SizedBox(height: 20),
 
             // Título
@@ -43,17 +137,16 @@ class SerieDetailScreen extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 10),
 
-            // Género y Año
+            // Género y año
             Text(
               '${serie['genero'] ?? 'Género desconocido'} · ${serie['lanzamiento'] ?? 'Año desconocido'}',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
 
-            // Director (clicable si es Map)
+            // Director
             InkWell(
               onTap:
                   isDirectorMap
@@ -80,10 +173,9 @@ class SerieDetailScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-
             const SizedBox(height: 16),
 
-            // Sinopsis y datos técnicos
+            // Detalles técnicos
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -116,8 +208,6 @@ class SerieDetailScreen extends StatelessWidget {
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
                   const SizedBox(height: 20),
-
-                  // Temporadas y capítulos
                   Row(
                     children: [
                       const Icon(
@@ -137,8 +227,6 @@ class SerieDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-
-                  // Calificación
                   Row(
                     children: [
                       const Icon(
@@ -157,7 +245,7 @@ class SerieDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // Actores (clicables)
+            // Actores
             if (actores.isNotEmpty) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -220,7 +308,19 @@ class SerieDetailScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final updatedSerie = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditSerieScreen(serie: serie),
+                      ),
+                    );
+                    if (updatedSerie != null) {
+                      setState(() {
+                        serie = updatedSerie;
+                      });
+                    }
+                  },
                   icon: const Icon(Icons.edit),
                   label: const Text("Editar"),
                   style: ElevatedButton.styleFrom(
@@ -236,7 +336,7 @@ class SerieDetailScreen extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _confirmarEliminacion,
                   icon: const Icon(Icons.delete),
                   label: const Text("Eliminar"),
                   style: ElevatedButton.styleFrom(
@@ -276,10 +376,10 @@ class SerieDetailScreen extends StatelessWidget {
   }
 }
 
-// Pantalla genérica para detalles de Actor/Director
+// Pantalla de detalle de persona
 class PersonDetailScreen extends StatelessWidget {
   final Map<String, dynamic> person;
-  final String type; // 'Actor' o 'Director'
+  final String type;
 
   const PersonDetailScreen({
     super.key,
@@ -302,7 +402,6 @@ class PersonDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Nombre y tipo (Actor/Director)
             Row(
               children: [
                 Text(
@@ -322,14 +421,10 @@ class PersonDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            // Información básica
             _InfoRow(label: 'Nacionalidad', value: nacionalidad),
             _InfoRow(label: 'Fecha de nacimiento', value: fechaNacimiento),
             _InfoRow(label: 'Género', value: genero),
             const SizedBox(height: 20),
-
-            // Trabajos (series o películas)
             if (trabajos.isNotEmpty) ...[
               Text(
                 type == 'Actor' ? 'Series/Películas' : 'Series dirigidas',
@@ -361,7 +456,6 @@ class PersonDetailScreen extends StatelessWidget {
   }
 }
 
-// Widget reutilizable para filas de información
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;

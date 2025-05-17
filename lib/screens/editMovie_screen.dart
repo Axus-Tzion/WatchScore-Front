@@ -1,0 +1,354 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'dart:convert';
+
+class MoviesEdit extends StatefulWidget {
+  final int idPelicula;
+
+  const MoviesEdit({super.key, required this.idPelicula});
+
+  @override
+  State<MoviesEdit> createState() => _MoviesEditState();
+}
+
+class _MoviesEditState extends State<MoviesEdit> {
+  final TextEditingController _tituloController = TextEditingController();
+  final TextEditingController _directorInputController =
+      TextEditingController();
+  final TextEditingController _lanzamientoController = TextEditingController();
+  final TextEditingController _sipnosisController = TextEditingController();
+  final TextEditingController _calificacionController = TextEditingController();
+  final TextEditingController _duracionController = TextEditingController();
+  final TextEditingController _actorInputController = TextEditingController();
+
+  final List<String> _generos = [
+    'Acción',
+    'Comedia',
+    'Drama',
+    'Fantasía',
+    'Terror',
+    'Romance',
+    'Ciencia ficción',
+    'Suspenso',
+    'Aventura',
+    'Animación',
+    'Documental',
+  ];
+
+  List<String> _actoresDisponibles = [];
+  List<String> _directoresDisponibles = [];
+  List<String> _actores = [];
+
+  bool _isLoading = false;
+  String? _generoSeleccionado;
+  String? _directorSeleccionado;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarActores();
+    _cargarDirectores();
+    _cargarDatosPelicula();
+  }
+
+  Future<void> _cargarActores() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://watchscore-1.onrender.com/actores'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _actoresDisponibles = List<String>.from(
+            data.map((actor) => actor['nombre']),
+          );
+        });
+      }
+    } catch (e) {
+      print('Error al cargar actores: $e');
+    }
+  }
+
+  Future<void> _cargarDirectores() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://watchscore-1.onrender.com/directores'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _directoresDisponibles = List<String>.from(
+            data.map((d) => d['nombre']),
+          );
+        });
+      }
+    } catch (e) {
+      print('Error al cargar directores: $e');
+    }
+  }
+
+  Future<void> _cargarDatosPelicula() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://watchscore-1.onrender.com/peliculas/${widget.idPelicula}',
+        ),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _tituloController.text = data['titulo'];
+          _directorSeleccionado = data['director'];
+          _directorInputController.text = data['director'];
+          _lanzamientoController.text = data['lanzamiento'];
+          _generoSeleccionado = data['genero'];
+          _duracionController.text = data['duracion'];
+          _sipnosisController.text = data['sinopsis'];
+          _calificacionController.text = data['calificacion'].toString();
+          _actores = List<String>.from(data['actores']);
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar película: ${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
+    }
+  }
+
+  Future<void> _editarPelicula() async {
+    if (_tituloController.text.isEmpty ||
+        _directorSeleccionado == null ||
+        _lanzamientoController.text.isEmpty ||
+        _generoSeleccionado == null ||
+        _sipnosisController.text.isEmpty ||
+        _duracionController.text.isEmpty ||
+        _actores.isEmpty ||
+        _calificacionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor complete todos los campos')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await http.put(
+        Uri.parse(
+          'https://watchscore-1.onrender.com/peliculas/${widget.idPelicula}',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'titulo': _tituloController.text,
+          'director': _directorSeleccionado,
+          'lanzamiento': _lanzamientoController.text,
+          'genero': _generoSeleccionado,
+          'duracion': _duracionController.text,
+          'sinopsis': _sipnosisController.text,
+          'calificacion': double.parse(_calificacionController.text),
+          'actores': _actores,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Película actualizada exitosamente')),
+        );
+        Navigator.pop(context); // Vuelve a la pantalla anterior
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar: ${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate:
+          DateTime.tryParse(_lanzamientoController.text) ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate != null) {
+      setState(() {
+        _lanzamientoController.text = DateFormat(
+          'yyyy-MM-dd',
+        ).format(pickedDate);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Editar Película'),
+        backgroundColor: Colors.deepPurple,
+      ),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _tituloController,
+                      decoration: const InputDecoration(labelText: 'Título'),
+                    ),
+                    const SizedBox(height: 12),
+                    Autocomplete<String>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        return _directoresDisponibles.where(
+                          (d) => d.toLowerCase().contains(
+                            textEditingValue.text.toLowerCase(),
+                          ),
+                        );
+                      },
+                      onSelected: (String selection) {
+                        setState(() {
+                          _directorSeleccionado = selection;
+                          _directorInputController.text = selection;
+                        });
+                      },
+                      fieldViewBuilder: (
+                        context,
+                        controller,
+                        focusNode,
+                        onEditingComplete,
+                      ) {
+                        controller.text = _directorInputController.text;
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: const InputDecoration(
+                            labelText: 'Director',
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _lanzamientoController,
+                      decoration: InputDecoration(
+                        labelText: 'Fecha de Lanzamiento',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: () => _selectDate(context),
+                        ),
+                      ),
+                      readOnly: true,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _generoSeleccionado,
+                      decoration: const InputDecoration(labelText: 'Género'),
+                      items:
+                          _generos.map((genero) {
+                            return DropdownMenuItem<String>(
+                              value: genero,
+                              child: Text(genero),
+                            );
+                          }).toList(),
+                      onChanged: (value) {
+                        setState(() => _generoSeleccionado = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _duracionController,
+                      decoration: const InputDecoration(labelText: 'Duración'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _sipnosisController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(labelText: 'Sinopsis'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _calificacionController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Calificación',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Autocomplete<String>(
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        return _actoresDisponibles.where(
+                          (actor) =>
+                              actor.toLowerCase().contains(
+                                textEditingValue.text.toLowerCase(),
+                              ) &&
+                              !_actores.contains(actor),
+                        );
+                      },
+                      onSelected: (String selection) {
+                        setState(() {
+                          _actores.add(selection);
+                          _actorInputController.clear();
+                        });
+                      },
+                      fieldViewBuilder: (
+                        context,
+                        controller,
+                        focusNode,
+                        onEditingComplete,
+                      ) {
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: const InputDecoration(
+                            labelText: 'Agregar Actor',
+                          ),
+                        );
+                      },
+                    ),
+                    Wrap(
+                      spacing: 8.0,
+                      children:
+                          _actores.map((actor) {
+                            return Chip(
+                              label: Text(actor),
+                              deleteIcon: const Icon(Icons.close),
+                              onDeleted: () {
+                                setState(() => _actores.remove(actor));
+                              },
+                            );
+                          }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _editarPelicula,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 50,
+                          vertical: 15,
+                        ),
+                      ),
+                      child: const Text(
+                        'Guardar Cambios',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+    );
+  }
+}
