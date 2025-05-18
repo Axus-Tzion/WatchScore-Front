@@ -8,10 +8,10 @@ class EditMovieScreen extends StatefulWidget {
   const EditMovieScreen({Key? key, required this.movie}) : super(key: key);
 
   @override
-  _EditarPeliculaScreenState createState() => _EditarPeliculaScreenState();
+  State<EditMovieScreen> createState() => _EditMovieScreenState();
 }
 
-class _EditarPeliculaScreenState extends State<EditMovieScreen> {
+class _EditMovieScreenState extends State<EditMovieScreen> {
   late TextEditingController tituloController;
   late TextEditingController generoController;
   late TextEditingController lanzamientoController;
