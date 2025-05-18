@@ -312,7 +312,7 @@ class _SerieDetailScreenState extends State<SerieDetailScreen> {
                     final updatedSerie = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => EditSerieScreen(serie: serie),
+                        builder: (_) => EditSerieScreen(serie: serie['id']),
                       ),
                     );
                     if (updatedSerie != null) {
