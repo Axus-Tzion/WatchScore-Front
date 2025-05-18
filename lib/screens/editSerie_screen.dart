@@ -5,183 +5,259 @@ import 'dart:convert';
 class EditSerieScreen extends StatefulWidget {
   final Map<String, dynamic> serie;
 
-  const EditSerieScreen({super.key, required this.serie});
+  const EditSerieScreen({Key? key, required this.serie}) : super(key: key);
 
   @override
   State<EditSerieScreen> createState() => _EditSerieScreenState();
 }
 
 class _EditSerieScreenState extends State<EditSerieScreen> {
-  final _formKey = GlobalKey<FormState>();
+  late TextEditingController tituloController;
+  late TextEditingController generoController;
+  late TextEditingController lanzamientoController;
+  late TextEditingController sinopsisController;
+  late TextEditingController duracionController;
+  late TextEditingController temporadasController;
+  late TextEditingController capitulosController;
+  late TextEditingController calificacionController;
+  late TextEditingController directorController;
+  late TextEditingController actoresController;
 
-  late TextEditingController _tituloController;
-  late TextEditingController _generoController;
-  late TextEditingController _lanzamientoController;
-  late TextEditingController _sinopsisController;
-  late TextEditingController _temporadasController;
-  late TextEditingController _capitulosController;
-  late TextEditingController _duracionCapituloController;
-  late TextEditingController _calificacionController;
+  List<String> _actoresDisponibles = [];
+  List<String> _directoresDisponibles = [];
 
   @override
   void initState() {
     super.initState();
     final serie = widget.serie;
-    _tituloController = TextEditingController(text: serie['titulo'] ?? '');
-    _generoController = TextEditingController(text: serie['genero'] ?? '');
-    _lanzamientoController = TextEditingController(
-      text: serie['lanzamiento']?.toString() ?? '',
+
+    tituloController = TextEditingController(text: serie['titulo']);
+    generoController = TextEditingController(text: serie['genero']);
+    lanzamientoController = TextEditingController(
+      text: serie['lanzamiento'].toString(),
     );
-    _sinopsisController = TextEditingController(text: serie['sinopsis'] ?? '');
-    _temporadasController = TextEditingController(
-      text: serie['temporadas']?.toString() ?? '',
+    sinopsisController = TextEditingController(text: serie['sinopsis']);
+    temporadasController = TextEditingController(
+      text: serie['temporadas'].toString(),
     );
-    _capitulosController = TextEditingController(
-      text: serie['capitulos']?.toString() ?? '',
+    capitulosController = TextEditingController(
+      text: serie['capitulos'].toString(),
     );
-    _duracionCapituloController = TextEditingController(
-      text: serie['duracionCapitulo'] ?? '',
+    duracionController = TextEditingController(
+      text: serie['duracionCapitulo'].toString(),
     );
-    _calificacionController = TextEditingController(
-      text: serie['calificacion']?.toString() ?? '',
+
+    calificacionController = TextEditingController(
+      text: serie['calificacion'].toString(),
     );
+
+    final director = serie['director'];
+    directorController = TextEditingController(
+      text: director is Map ? director['nombre'] ?? '' : director ?? '',
+    );
+
+    final actores = serie['actores'] as List;
+    actoresController = TextEditingController(
+      text: actores
+          .map((a) {
+            return a is Map ? a['nombre'] ?? '' : a.toString();
+          })
+          .join(', '),
+    );
+
+    _cargarListas();
   }
 
-  @override
-  void dispose() {
-    _tituloController.dispose();
-    _generoController.dispose();
-    _lanzamientoController.dispose();
-    _sinopsisController.dispose();
-    _temporadasController.dispose();
-    _capitulosController.dispose();
-    _duracionCapituloController.dispose();
-    _calificacionController.dispose();
-    super.dispose();
-  }
+  Future<void> _cargarListas() async {
+    try {
+      final actoresResponse = await http.get(
+        Uri.parse('https://watchscore-1.onrender.com/actores/'),
+      );
+      final directoresResponse = await http.get(
+        Uri.parse('https://watchscore-1.onrender.com/director/'),
+      );
 
-  void _guardarCambios() async {
-    if (_formKey.currentState!.validate()) {
-      final id = widget.serie['id']; // Asegúrate de tener el ID
+      if (actoresResponse.statusCode == 200 &&
+          directoresResponse.statusCode == 200) {
+        final actoresJson = jsonDecode(actoresResponse.body) as List;
+        final directoresJson = jsonDecode(directoresResponse.body) as List;
 
-      final serieActualizada = {
-        'titulo': _tituloController.text,
-        'genero': _generoController.text,
-        'lanzamiento': int.tryParse(_lanzamientoController.text),
-        'sinopsis': _sinopsisController.text,
-        'temporadas': int.tryParse(_temporadasController.text),
-        'capitulos': int.tryParse(_capitulosController.text),
-        'duracionCapitulo': _duracionCapituloController.text,
-        'calificacion': double.tryParse(_calificacionController.text),
-      };
-
-      final url = Uri.parse('http://localhost:8080/api/series/$id');
-
-      try {
-        final response = await http.put(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(serieActualizada),
-        );
-
-        if (response.statusCode == 200) {
-          Navigator.pop(context, jsonDecode(response.body));
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error al guardar los cambios.')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
+        setState(() {
+          _actoresDisponibles =
+              actoresJson.map((e) => e['nombre'].toString()).toList();
+          _directoresDisponibles =
+              directoresJson.map((e) => e['nombre'].toString()).toList();
+        });
       }
+    } catch (e) {
+      print('Error al cargar listas: $e');
     }
+  }
+
+  Future<void> _guardarCambios() async {
+    final id = widget.serie['id'];
+    final url = Uri.parse('http://127.0.0.1:8860/series/actualizar/$id');
+
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'titulo': tituloController.text,
+        'genero': generoController.text,
+        'lanzamiento': lanzamientoController.text,
+        'sinopsis': sinopsisController.text,
+        'temporadas': temporadasController.text,
+        'capitulos': capitulosController.text,
+        'duracionCapitulo': duracionController.text,
+        'calificacion': double.tryParse(calificacionController.text),
+        'director': directorController.text,
+        'actores':
+            actoresController.text.split(',').map((e) => e.trim()).toList(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      Navigator.pop(context, _guardarCambios);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al guardar los cambios')),
+      );
+    }
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAutoCompleteDirector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Autocomplete<String>(
+        initialValue: TextEditingValue(text: directorController.text),
+        optionsBuilder: (TextEditingValue textEditingValue) {
+          return _directoresDisponibles.where((String option) {
+            return option.toLowerCase().contains(
+              textEditingValue.text.toLowerCase(),
+            );
+          });
+        },
+        onSelected: (String selection) {
+          directorController.text = selection;
+        },
+        fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+          directorController = controller;
+          return TextField(
+            controller: controller,
+            focusNode: focusNode,
+            decoration: const InputDecoration(
+              labelText: 'Director',
+              border: OutlineInputBorder(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTextFieldActores() {
+    final listaActores =
+        actoresController.text
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Actores (selecciona múltiples):"),
+        Wrap(
+          spacing: 8,
+          children:
+              listaActores
+                  .map(
+                    (actor) => Chip(
+                      label: Text(actor),
+                      onDeleted: () {
+                        listaActores.remove(actor);
+                        setState(() {
+                          actoresController.text = listaActores.join(', ');
+                        });
+                      },
+                    ),
+                  )
+                  .toList(),
+        ),
+        Autocomplete<String>(
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            return _actoresDisponibles.where((String option) {
+              return option.toLowerCase().contains(
+                    textEditingValue.text.toLowerCase(),
+                  ) &&
+                  !listaActores.contains(option);
+            });
+          },
+          onSelected: (String selection) {
+            listaActores.add(selection);
+            setState(() {
+              actoresController.text = listaActores.join(', ');
+            });
+          },
+          fieldViewBuilder: (
+            context,
+            controller,
+            focusNode,
+            onEditingComplete,
+          ) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              decoration: const InputDecoration(
+                labelText: 'Agregar actor',
+                border: OutlineInputBorder(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Serie'),
-        backgroundColor: Colors.deepPurple,
-      ),
+      appBar: AppBar(title: const Text('Editar Serie')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _buildTextField(_tituloController, 'Título'),
-              _buildTextField(_generoController, 'Género'),
-              _buildTextField(
-                _lanzamientoController,
-                'Año de lanzamiento',
-                tipo: TextInputType.number,
-              ),
-              _buildTextField(_sinopsisController, 'Sinopsis', maxLines: 4),
-              _buildTextField(
-                _temporadasController,
-                'Temporadas',
-                tipo: TextInputType.number,
-              ),
-              _buildTextField(
-                _capitulosController,
-                'Capítulos',
-                tipo: TextInputType.number,
-              ),
-              _buildTextField(
-                _duracionCapituloController,
-                'Duración por capítulo',
-              ),
-              _buildTextField(
-                _calificacionController,
-                'Calificación',
-                tipo: TextInputType.number,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _guardarCambios,
-                icon: const Icon(Icons.save),
-                label: const Text('Guardar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            _buildTextField(tituloController, 'Título'),
+            _buildTextField(generoController, 'Género'),
+            _buildTextField(lanzamientoController, 'Año de Lanzamiento'),
+            _buildTextField(sinopsisController, 'Sinopsis'),
+            _buildTextField(temporadasController, 'Temporadas'),
+            _buildTextField(capitulosController, 'Capitulos'),
+            _buildTextField(duracionController, 'Duración Capitulo'),
+            _buildTextField(calificacionController, 'Calificación'),
+            _buildAutoCompleteDirector(),
+            const SizedBox(height: 12),
+            _buildTextFieldActores(),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _guardarCambios,
+              child: const Text('Guardar Cambios'),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label, {
-    TextInputType tipo = TextInputType.text,
-    int maxLines = 1,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: tipo,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Este campo es obligatorio';
-          }
-          return null;
-        },
       ),
     );
   }

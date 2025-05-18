@@ -309,15 +309,17 @@ class _SerieDetailScreenState extends State<SerieDetailScreen> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final updatedSerie = await Navigator.push(
+                    final resultado = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => EditSerieScreen(serie: serie),
+                        builder: (context) => EditSerieScreen(serie: serie),
                       ),
                     );
-                    if (updatedSerie != null) {
+
+                    if (resultado != null &&
+                        resultado is Map<String, dynamic>) {
                       setState(() {
-                        serie = updatedSerie;
+                        serie = resultado;
                       });
                     }
                   },

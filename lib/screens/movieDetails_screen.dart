@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:watchscorefront/screens/editMovie_screen.dart';
 import 'package:watchscorefront/screens/editSerie_screen.dart';
+import 'package:watchscorefront/screens/editSerie_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
   final Map<String, dynamic> movie;
@@ -45,11 +46,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
 
     if (confirmacion == true) {
-      await _eliminarSerie();
+      await _eliminarMovie();
     }
   }
 
-  Future<void> _eliminarSerie() async {
+  Future<void> _eliminarMovie() async {
     final id = movie['id'];
     final url = Uri.parse('http://localhost:8860/peliculas/eliminar/$id');
 
@@ -58,23 +59,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         if (mounted) {
-          await showDialog(
-            context: context,
-            builder:
-                (_) => AlertDialog(
-                  title: const Text('Eliminación exitosa'),
-                  content: const Text(
-                    'La película ha sido eliminada correctamente.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Aceptar'),
-                    ),
-                  ],
-                ),
-          );
-          if (mounted) Navigator.pop(context, true);
+          Navigator.pop(context, {'eliminado': true});
         }
       } else {
         _mostrarError('Error al eliminar la pelicula. Intenta de nuevo.');
@@ -297,15 +282,17 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final updatedMovie = await Navigator.push(
+                    final resultado = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MoviesEdit(idPelicula: movie['id']),
+                        builder: (context) => EditMovieScreen(movie: movie),
                       ),
                     );
-                    if (updatedMovie != null) {
+
+                    if (resultado != null &&
+                        resultado is Map<String, dynamic>) {
                       setState(() {
-                        movie = updatedMovie;
+                        movie = resultado;
                       });
                     }
                   },
@@ -323,6 +310,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                     ),
                   ),
                 ),
+
                 ElevatedButton.icon(
                   onPressed: _confirmarEliminacion,
                   icon: const Icon(Icons.delete),
