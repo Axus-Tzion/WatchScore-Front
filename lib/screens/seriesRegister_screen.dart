@@ -121,7 +121,7 @@ class _SeriesRegisterState extends State<SeriesRegister> {
     // consume la api del registro de series
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8860/series/'),
+        Uri.parse('https://watchscore-1.onrender.com/series/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'titulo': _tituloController.text,

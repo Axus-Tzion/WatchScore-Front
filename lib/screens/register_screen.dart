@@ -11,12 +11,14 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController _identificacionController = TextEditingController();
+  final TextEditingController _identificacionController =
+      TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _apellidoController = TextEditingController();
   final TextEditingController _celularController = TextEditingController();
-  final TextEditingController _fechaNacimientoController = TextEditingController();
+  final TextEditingController _fechaNacimientoController =
+      TextEditingController();
   final TextEditingController _ciudadController = TextEditingController();
   final TextEditingController _contrasenaController = TextEditingController();
   bool _isLoading = false;
@@ -30,7 +32,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     if (picked != null) {
       setState(() {
-        _fechaNacimientoController.text = DateFormat('yyyy-MM-dd').format(picked);
+        _fechaNacimientoController.text = DateFormat(
+          'yyyy-MM-dd',
+        ).format(picked);
       });
     }
   }
@@ -52,7 +56,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!RegExp(r'^[0-9]+$').hasMatch(_identificacionController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La identificación debe contener solo números')),
+        const SnackBar(
+          content: Text('La identificación debe contener solo números'),
+        ),
       );
       return;
     }
@@ -70,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8860/usuarios/'),
+        Uri.parse('https://watchscore-1.onrender.com/usuarios/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'identificacion': int.parse(_identificacionController.text),
@@ -85,22 +91,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registro exitoso')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
         Navigator.pop(context);
       } else {
         String errorMessage;
         try {
           final errorResponse = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorResponse['message']?.toString() ?? 'Error desconocido';
+          errorMessage =
+              errorResponse['message']?.toString() ?? 'Error desconocido';
         } catch (e) {
           errorMessage = utf8.decode(response.bodyBytes); // Para texto plano
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $errorMessage')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $errorMessage')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,7 +157,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _apellidoController,
               decoration: const InputDecoration(
                 labelText: 'Apellido',
-                prefixIcon: Icon(Icons.person_outline, color: Colors.deepPurple),
+                prefixIcon: Icon(
+                  Icons.person_outline,
+                  color: Colors.deepPurple,
+                ),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -179,7 +189,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _fechaNacimientoController,
               decoration: const InputDecoration(
                 labelText: 'Fecha de Nacimiento',
-                prefixIcon: Icon(Icons.calendar_today, color: Colors.deepPurple),
+                prefixIcon: Icon(
+                  Icons.calendar_today,
+                  color: Colors.deepPurple,
+                ),
                 border: OutlineInputBorder(),
               ),
               onTap: () => _selectDate(context),
@@ -209,14 +222,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onPressed: _isLoading ? null : () => _register(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
-                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 50,
+                  vertical: 15,
+                ),
               ),
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Registrarse',
-                      style: TextStyle(color: Colors.white),
-                    ),
+              child:
+                  _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                        'Registrarse',
+                        style: TextStyle(color: Colors.white),
+                      ),
             ),
           ],
         ),

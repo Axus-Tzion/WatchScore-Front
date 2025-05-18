@@ -115,7 +115,7 @@ class _MoviesRegisterState extends State<MoviesRegister> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8860/peliculas/'),
+        Uri.parse('https://watchscore-1.onrender.com/peliculas/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'titulo': _tituloController.text,

@@ -52,7 +52,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   Future<void> _eliminarMovie() async {
     final id = movie['id'];
-    final url = Uri.parse('http://localhost:8860/peliculas/eliminar/$id');
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/peliculas/eliminar/$id',
+    );
 
     try {
       final response = await http.delete(url);

@@ -96,7 +96,7 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
 
   Future<void> _guardarCambios() async {
     final id = widget.serie['id'];
-    final url = Uri.parse('http://127.0.0.1:8860/series/actualizar/$id');
+    final url = Uri.parse('https://watchscore-1.onrender.com/actualizar/$id');
 
     final response = await http.put(
       url,

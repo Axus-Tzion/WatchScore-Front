@@ -50,7 +50,9 @@ class _SerieDetailScreenState extends State<SerieDetailScreen> {
 
   Future<void> _eliminarSerie() async {
     final id = serie['id'];
-    final url = Uri.parse('http://localhost:8860/series/eliminar/$id');
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/series/eliminar/$id',
+    );
 
     try {
       final response = await http.delete(url);

@@ -85,7 +85,9 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
 
   Future<void> _guardarCambios() async {
     final id = widget.movie['id'];
-    final url = Uri.parse('http://127.0.0.1:8860/peliculas/actualizar/$id');
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/peliculas/actualizar/$id',
+    );
 
     final response = await http.put(
       url,

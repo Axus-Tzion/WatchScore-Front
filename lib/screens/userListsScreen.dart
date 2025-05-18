@@ -68,7 +68,7 @@ class _UserListsScreenState extends State<UserListsScreen> {
   Future<void> _createNewList(String listName) async {
     try {
       final response = await _httpClient.post(
-        Uri.parse('http://127.0.0.1:8860/listas/usuario'),
+        Uri.parse('https://watchscore-1.onrender.com/listas/usuario'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nombre': listName}),
       );
