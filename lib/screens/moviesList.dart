@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:watchscorefront/screens/movieDetails_screen.dart';
-import 'package:watchscorefront/screens/moviesRegister_screen.dart';
 
 class MoviesList extends StatefulWidget {
   final bool showOnlyPopular;
@@ -29,6 +28,18 @@ class _MoviesListState extends State<MoviesList> {
   void initState() {
     super.initState();
     _fetchMovies();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _applySearchFilter();
   }
 
   Future<void> _fetchMovies() async {
@@ -43,19 +54,20 @@ class _MoviesListState extends State<MoviesList> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final data =
+            jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
 
-        // Aplicar filtros según los parámetros
+        // Filtrado inicial según los parámetros
         List<dynamic> filteredMovies = data;
 
         if (widget.showOnlyPopular) {
-          // Filtra las primeras 5 como "populares" (ejemplo)
-          filteredMovies = data.take(5).toList();
-        }
-
-        if (widget.showRecommendations) {
-          // Filtra algunas como recomendadas (ejemplo)
-          filteredMovies = data.where((movie) => movie['id'] % 3 == 0).toList();
+          filteredMovies =
+              data.take(5).toList(); // Ejemplo: primeras 5 como populares
+        } else if (widget.showRecommendations) {
+          filteredMovies =
+              data
+                  .where((movie) => movie['id'] % 3 == 0)
+                  .toList(); // Ejemplo de recomendadas
         }
 
         setState(() {
@@ -63,6 +75,8 @@ class _MoviesListState extends State<MoviesList> {
           _filteredMovies = filteredMovies;
           _isLoading = false;
         });
+
+        _applySearchFilter();
       } else {
         setState(() {
           _error = 'Error al cargar películas: ${response.statusCode}';
@@ -77,26 +91,46 @@ class _MoviesListState extends State<MoviesList> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final moviesToDisplay =
-        _searchController.text.isEmpty
-            ? _filteredMovies
-            : _filteredMovies
+  void _applySearchFilter() {
+    final query = _searchController.text.toLowerCase();
+
+    if (query.isEmpty) {
+      setState(() {
+        // Mantener filtro original
+        _filteredMovies =
+            widget.showOnlyPopular
+                ? _movies.take(5).toList()
+                : widget.showRecommendations
+                ? _movies.where((movie) => movie['id'] % 3 == 0).toList()
+                : _movies;
+      });
+    } else {
+      setState(() {
+        _filteredMovies =
+            (_filteredMovies.isEmpty ? _movies : _filteredMovies)
                 .where(
                   (movie) =>
-                      movie['titulo'].toString().toLowerCase().contains(
-                        _searchController.text.toLowerCase(),
-                      ) ||
-                      movie['genero'].toString().toLowerCase().contains(
-                        _searchController.text.toLowerCase(),
-                      ) ||
-                      movie['director'].toString().toLowerCase().contains(
-                        _searchController.text.toLowerCase(),
-                      ),
+                      (movie['titulo']?.toString().toLowerCase().contains(
+                            query,
+                          ) ??
+                          false) ||
+                      (movie['genero']?.toString().toLowerCase().contains(
+                            query,
+                          ) ??
+                          false) ||
+                      (movie['director']?['nombre']
+                              ?.toString()
+                              .toLowerCase()
+                              .contains(query) ??
+                          false),
                 )
                 .toList();
+      });
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -124,7 +158,6 @@ class _MoviesListState extends State<MoviesList> {
             if (!widget.showOnlyPopular && !widget.showRecommendations)
               TextField(
                 controller: _searchController,
-                onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Buscar película...',
                   prefixIcon: const Icon(Icons.search),
@@ -143,7 +176,7 @@ class _MoviesListState extends State<MoviesList> {
                       ? const Center(child: CircularProgressIndicator())
                       : _error != null
                       ? Center(child: Text(_error!))
-                      : moviesToDisplay.isEmpty
+                      : _filteredMovies.isEmpty
                       ? const Center(child: Text('No se encontraron películas'))
                       : GridView.builder(
                         gridDelegate:
@@ -153,18 +186,21 @@ class _MoviesListState extends State<MoviesList> {
                               crossAxisSpacing: 12,
                               childAspectRatio: 0.72,
                             ),
-                        itemCount: moviesToDisplay.length,
+                        itemCount: _filteredMovies.length,
                         itemBuilder: (context, index) {
-                          final movie = moviesToDisplay[index];
+                          final movie = _filteredMovies[index];
                           return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder:
                                       (_) => MovieDetailScreen(movie: movie),
                                 ),
                               );
+                              if (result == true) {
+                                _fetchMovies();
+                              }
                             },
                             child: Card(
                               color: Colors.white,
@@ -218,7 +254,7 @@ class _MoviesListState extends State<MoviesList> {
                                       ),
                                     ),
                                     Text(
-                                      'Director: ${movie['director'] ?? 'Desconocido'}',
+                                      'Director: ${movie['director']?['nombre'] ?? 'Desconocido'}',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey[600],

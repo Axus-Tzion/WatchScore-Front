@@ -26,6 +26,12 @@ class _SeriesListState extends State<SeriesList> {
     _fetchSeries();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchSeries() async {
     setState(() {
       _isLoading = true;
@@ -40,10 +46,8 @@ class _SeriesListState extends State<SeriesList> {
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
 
-        // Aplicar filtro para series populares
         List<dynamic> filteredSeries = data;
         if (widget.showOnlyPopular) {
-          // Filtra las primeras 5 como "populares" (ejemplo)
           filteredSeries = data.take(5).toList();
         }
 
@@ -51,6 +55,7 @@ class _SeriesListState extends State<SeriesList> {
           _series = data;
           _filteredSeries = filteredSeries;
           _isLoading = false;
+          _searchController.clear();
         });
       } else {
         setState(() {
@@ -68,24 +73,18 @@ class _SeriesListState extends State<SeriesList> {
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchController.text.toLowerCase();
     final seriesToDisplay =
-        _searchController.text.isEmpty
+        query.isEmpty
             ? _filteredSeries
-            : _filteredSeries
-                .where(
-                  (serie) =>
-                      serie['titulo'].toString().toLowerCase().contains(
-                        _searchController.text.toLowerCase(),
-                      ) ||
-                      serie['genero'].toString().toLowerCase().contains(
-                        _searchController.text.toLowerCase(),
-                      ) ||
-                      (serie['creador']?.toString().toLowerCase().contains(
-                            _searchController.text.toLowerCase(),
-                          ) ??
-                          false),
-                )
-                .toList();
+            : _filteredSeries.where((serie) {
+              final titulo = serie['titulo']?.toString().toLowerCase() ?? '';
+              final genero = serie['genero']?.toString().toLowerCase() ?? '';
+              final creador = serie['creador']?.toString().toLowerCase() ?? '';
+              return titulo.contains(query) ||
+                  genero.contains(query) ||
+                  creador.contains(query);
+            }).toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -143,14 +142,17 @@ class _SeriesListState extends State<SeriesList> {
                         itemBuilder: (context, index) {
                           final serie = seriesToDisplay[index];
                           return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder:
                                       (_) => SerieDetailScreen(serie: serie),
                                 ),
                               );
+                              if (result == true) {
+                                _fetchSeries();
+                              }
                             },
                             child: Card(
                               color: Colors.white,
@@ -188,7 +190,7 @@ class _SeriesListState extends State<SeriesList> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Genero: ${serie['genero'] ?? 'N/A'}',
+                                      'Género: ${serie['genero'] ?? 'N/A'}',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey[600],
@@ -197,7 +199,14 @@ class _SeriesListState extends State<SeriesList> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
-                                      'Sinopsis: ${serie['sinopsis'] ?? 'Desconocida'}',
+                                      'Temporadas: ${serie['temporadas'] ?? 'Desconocida'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Director: ${serie['director']?['nombre'] ?? 'Desconocido'}',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey[600],
