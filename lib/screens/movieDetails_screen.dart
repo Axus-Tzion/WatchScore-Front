@@ -183,7 +183,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    movie['sinopsis'] ?? 'No disponible',
+                    movie['sipnosis'] ?? 'No disponible',
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
                   const SizedBox(height: 20),
@@ -289,10 +289,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                       ),
                     );
 
-                    // Recargar datos si hubo cambios
-                    if (resultado != null && resultado['actualizado'] == true) {
+                    if (resultado != null &&
+                        resultado is Map<String, dynamic>) {
                       setState(() {
-                        movie = resultado['peliculaActualizada'];
+                        movie = resultado;
                       });
                     }
                   },
