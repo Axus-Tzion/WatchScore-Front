@@ -15,7 +15,7 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
   late TextEditingController tituloController;
   late TextEditingController generoController;
   late TextEditingController lanzamientoController;
-  late TextEditingController sinopsisController;
+  late TextEditingController sipnosisController;
   late TextEditingController duracionController;
   late TextEditingController calificacionController;
   late TextEditingController directorController;
@@ -34,7 +34,7 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
     lanzamientoController = TextEditingController(
       text: movie['lanzamiento'].toString(),
     );
-    sinopsisController = TextEditingController(text: movie['sipnosis']);
+    sipnosisController = TextEditingController(text: movie['sipnosis']);
     duracionController = TextEditingController(text: movie['duracion']);
     calificacionController = TextEditingController(
       text: movie['calificacion'].toString(),
@@ -96,7 +96,7 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
         'titulo': tituloController.text,
         'genero': generoController.text,
         'lanzamiento': int.tryParse(lanzamientoController.text),
-        'sipnosis': sinopsisController.text,
+        'sipnosis': sipnosisController.text,
         'duracion': duracionController.text,
         'calificacion': double.tryParse(calificacionController.text),
         'director': directorController.text,
@@ -232,7 +232,7 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
             _buildTextField(tituloController, 'Título'),
             _buildTextField(generoController, 'Género'),
             _buildTextField(lanzamientoController, 'Año de Lanzamiento'),
-            _buildTextField(sinopsisController, 'Sinopsis'),
+            _buildTextField(sipnosisController, 'Sinopsis'),
             _buildTextField(duracionController, 'Duración'),
             _buildTextField(calificacionController, 'Calificación'),
             _buildAutoCompleteDirector(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:watchscorefront/screens/login_screen.dart';
+import 'package:watchscorefront/screens/list_detail_screen.dart';
 
 class UserListsScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -31,7 +32,6 @@ class _UserListsScreenState extends State<UserListsScreen> {
     });
 
     try {
-      // Usamos el mismo cliente para mantener las cookies
       final response = await _httpClient.get(
         Uri.parse('https://watchscore-1.onrender.com/listas/mis'),
       );
@@ -176,7 +176,15 @@ class _UserListsScreenState extends State<UserListsScreen> {
                           'Películas: ${lista['peliculas']?.length ?? 0} • Series: ${lista['series']?.length ?? 0}',
                         ),
                         trailing: const Icon(Icons.chevron_right),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => ListDetailScreen(lista: lista),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },

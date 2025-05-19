@@ -178,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   () => setState(() {
                     _isEditing = false;
                     _passwordController.clear();
-                    _initializeControllers(); // Resetear valores
+                    _initializeControllers();
                   }),
             ),
         ],
@@ -231,9 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.camera_alt, color: Colors.white),
-                  onPressed: () {
-                    // Implementar lógica para cambiar foto de perfil
-                  },
+                  onPressed: () {},
                 ),
               ),
           ],
