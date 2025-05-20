@@ -2,12 +2,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:watchscorefront/screens/serieDetails_screen.dart';
-import 'package:watchscorefront/screens/seriesRegister_screen.dart';
 
 class SeriesList extends StatefulWidget {
   final bool showOnlyPopular;
+  final bool showRecommendations;
 
-  const SeriesList({super.key, this.showOnlyPopular = false});
+  const SeriesList({
+    super.key,
+    this.showOnlyPopular = false,
+    this.showRecommendations = false,
+  });
 
   @override
   State<SeriesList> createState() => _SeriesListState();

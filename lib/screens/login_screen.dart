@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watchscorefront/screens/register_screen.dart';
 import 'package:watchscorefront/screens/home_screen.dart';
+import 'package:watchscorefront/screens/profile_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,13 +20,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   Future<void> _login(BuildContext context) async {
-    // 1. Validar campos vacíos
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       _showErrorSnackBar('Por favor, completa todos los campos');
       return;
     }
 
-    // 2. Validar formato de email
     if (!RegExp(
       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
     ).hasMatch(_emailController.text)) {
@@ -32,15 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // 3. Validar longitud mínima de contraseña
     if (_passwordController.text.length < 6) {
       _showErrorSnackBar('La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final response = await http.post(
@@ -55,55 +52,54 @@ class _LoginScreenState extends State<LoginScreen> {
       final responseBody = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        // Login exitoso - guardar token y redirigir
-        _saveSessionData(responseBody);
-        Navigator.pushReplacement(
+        if (responseBody['identificacion'] == null) {
+          throw Exception('El servidor no devolvió un ID de usuario válido');
+        }
+
+        // Guardar todos los datos del usuario en SharedPreferences
+        await _saveUserData(responseBody);
+
+        // Navegar directamente al perfil con los datos del usuario
+        Navigator.pushReplacementNamed(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          '/home',
+          arguments: responseBody,
         );
       } else {
-        // Manejo específico de errores
         _handleLoginError(response.statusCode, responseBody);
       }
-    } on http.ClientException catch (e) {
-      _showErrorSnackBar('Error de conexión: ${e.message}');
-    } on FormatException catch (_) {
-      _showErrorSnackBar('Error al procesar la respuesta del servidor');
     } catch (e) {
-      _showErrorSnackBar('Ocurrió un error inesperado');
+      _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  void _saveSessionData(Map<String, dynamic> response) {}
+  Future<void> _saveUserData(Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setInt('userId', userData['identificacion']?.toInt() ?? 0);
+    await prefs.setString('userEmail', userData['email'] ?? '');
+    await prefs.setString('userName', userData['nombre'] ?? '');
+    await prefs.setString('userLastName', userData['apellido'] ?? '');
+    await prefs.setString('userPhone', userData['celular']?.toString() ?? '');
+    await prefs.setString('userCity', userData['ciudad'] ?? '');
+    await prefs.setString(
+      'userBirthDate',
+      userData['fechaNacimiento']?.toString() ?? '',
+    );
+  }
 
   void _handleLoginError(int statusCode, Map<String, dynamic> response) {
-    String errorMessage;
-
-    switch (statusCode) {
-      case 400:
-        errorMessage = 'Solicitud incorrecta';
-        break;
-      case 401:
-        errorMessage = 'Credenciales incorrectas';
-        break;
-      case 404:
-        errorMessage = 'Usuario no encontrado';
-        break;
-      case 500:
-        errorMessage = 'Error en el servidor';
-        break;
-      default:
-        errorMessage =
-            response['message']?.toString() ??
-            'Error desconocido ($statusCode)';
-    }
-
+    String errorMessage = 'Error desconocido';
+    if (statusCode == 401)
+      errorMessage = 'Email o contraseña incorrectos';
+    else if (statusCode == 400)
+      errorMessage = 'Datos de entrada inválidos';
+    else if (response['message'] != null)
+      errorMessage = response['message'];
     _showErrorSnackBar(errorMessage);
   }
 
@@ -113,8 +109,6 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -122,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _navigateToRegister() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
     );
   }
 
@@ -136,9 +130,13 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 40),
-              const FlutterLogo(size: 100),
-              const SizedBox(height: 30),
+              const SizedBox(height: 5),
+              Image.asset(
+                'assets/images/WatchScoreLogo.png',
+                height: 230,
+                width: 200,
+              ),
+              const SizedBox(height: 10),
               const Text(
                 'Iniciar Sesión',
                 style: TextStyle(
@@ -157,8 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 20),
@@ -175,29 +171,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           : Icons.visibility_off,
                       color: Colors.deepPurple,
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
+                    onPressed:
+                        () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    // Aquí iría la navegación a recuperación de contraseña
-                  },
-                  child: const Text(
-                    '¿Olvidaste tu contraseña?',
-                    style: TextStyle(color: Colors.deepPurple),
                   ),
                 ),
               ),
@@ -218,26 +198,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
                             'Iniciar sesión',
-                            style: TextStyle(fontSize: 16, color: Colors.white),
+                            style: TextStyle(color: Colors.white),
                           ),
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('¿No tienes cuenta? '),
-                  TextButton(
-                    onPressed: _isLoading ? null : _navigateToRegister,
-                    child: const Text(
-                      'Regístrate',
-                      style: TextStyle(
-                        color: Colors.deepPurple,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+              TextButton(
+                onPressed: _navigateToRegister,
+                child: const Text(
+                  '¿No tienes cuenta? Regístrate',
+                  style: TextStyle(color: Colors.deepPurple),
+                ),
               ),
             ],
           ),

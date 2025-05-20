@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:watchscorefront/screens/moviesList.dart';
 import 'package:watchscorefront/screens/seriesList.dart';
-import 'package:watchscorefront/screens/profile_screen.dart';
 import 'package:watchscorefront/screens/universal_search_screen.dart';
 import 'package:watchscorefront/widgets/registerContent_screen.dart';
 

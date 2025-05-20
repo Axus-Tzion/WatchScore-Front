@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watchscorefront/screens/home_screen.dart';
 import 'package:watchscorefront/screens/login_screen.dart';
 import 'package:watchscorefront/screens/moviesRegister_screen.dart';
@@ -31,7 +32,20 @@ class MainApp extends StatelessWidget {
           elevation: 4,
         ),
       ),
-      initialRoute: '/login',
+      home: FutureBuilder(
+        future: SharedPreferences.getInstance(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            final prefs = snapshot.data as SharedPreferences;
+            final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+            return isLoggedIn ? const HomeScreen() : const LoginScreen();
+          }
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        },
+      ),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
