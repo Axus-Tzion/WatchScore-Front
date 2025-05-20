@@ -4,8 +4,13 @@ import 'package:watchscorefront/screens/editSerie_screen.dart';
 
 class SerieDetailScreen extends StatefulWidget {
   final Map<String, dynamic> serie;
+  final Map<String, dynamic> userData;
 
-  const SerieDetailScreen({super.key, required this.serie});
+  const SerieDetailScreen({
+    super.key,
+    required this.serie,
+    required this.userData,
+  });
 
   @override
   State<SerieDetailScreen> createState() => _SerieDetailScreenState();

@@ -1,7 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:watchscorefront/screens/editMovie_screen.dart';
-import 'package:watchscorefront/screens/editSerie_screen.dart';
 import 'package:watchscorefront/screens/editSerie_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
@@ -15,11 +16,197 @@ class MovieDetailScreen extends StatefulWidget {
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   late Map<String, dynamic> movie;
+  final TextEditingController _nombreListaController = TextEditingController();
+  List<Map<String, dynamic>> _listasUsuario = [];
+  bool _creandoNuevaLista = false;
 
   @override
   void initState() {
     super.initState();
     movie = widget.movie;
+  }
+
+  void _mostrarDialogoListas() async {
+    await _cargarListasUsuario();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text(
+                  _creandoNuevaLista ? 'Crear nueva lista' : 'Tus listas',
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_creandoNuevaLista) _buildCrearListaContent(),
+                      if (!_creandoNuevaLista) _buildListasExistentesContent(),
+                    ],
+                  ),
+                ),
+                actions: _buildDialogActions(setState),
+              );
+            },
+          ),
+    );
+  }
+
+  Widget _buildCrearListaContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: _nombreListaController,
+          decoration: const InputDecoration(
+            labelText: 'Nombre de la lista',
+            border: OutlineInputBorder(),
+            hintText: 'Ej: Favoritas, Por ver...',
+          ),
+          autofocus: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListasExistentesContent() {
+    if (_listasUsuario.isEmpty) {
+      return const Column(
+        children: [
+          Icon(Icons.list, size: 50, color: Colors.grey),
+          SizedBox(height: 10),
+          Text('No tienes listas creadas aún'),
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 200,
+      child: ListView.builder(
+        itemCount: _listasUsuario.length,
+        itemBuilder: (context, index) {
+          final lista = _listasUsuario[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            child: ListTile(
+              leading: const Icon(Icons.list),
+              title: Text(lista['nombre']),
+              subtitle: Text('${lista['peliculas']?.length ?? 0} películas'),
+              onTap: () {
+                _anadirPeliculaALista(lista['id'].toString());
+                Navigator.pop(context);
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<Widget> _buildDialogActions(StateSetter setState) {
+    return [
+      if (_creandoNuevaLista) ...[
+        TextButton(
+          onPressed: () {
+            _nombreListaController.clear();
+            setState(() => _creandoNuevaLista = false);
+          },
+          child: const Text('Volver'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            if (_nombreListaController.text.trim().isNotEmpty) {
+              await _crearNuevaLista(_nombreListaController.text.trim());
+              if (mounted) Navigator.pop(context);
+            }
+          },
+          child: const Text('Crear'),
+        ),
+      ] else ...[
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            setState(() => _creandoNuevaLista = true);
+          },
+          child: const Text('Nueva lista'),
+        ),
+      ],
+    ];
+  }
+
+  Future<void> _cargarListasUsuario() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://watchscore-1.onrender.com/listas/mis'),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _listasUsuario = List<Map<String, dynamic>>.from(
+            jsonDecode(response.body),
+          );
+        });
+      } else {
+        _mostrarError('Error al cargar listas: ${response.statusCode}');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión: $e');
+    }
+  }
+
+  Future<void> _crearNuevaLista(String nombreLista) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://watchscore-1.onrender.com/listas/usuario'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'nombre': nombreLista}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final listaCreada = jsonDecode(response.body);
+        await _anadirPeliculaALista(listaCreada['id'].toString());
+        _nombreListaController.clear();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('"$nombreLista" creada y película añadida')),
+          );
+        }
+      } else {
+        _mostrarError('Error al crear lista: ${response.body}');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión: $e');
+    }
+  }
+
+  Future<void> _anadirPeliculaALista(String listaId) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          'https://watchscore-1.onrender.com/listas/agregar/$listaId/peliculas',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'peliculaId': movie['id']}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Película añadida a la lista')),
+          );
+        }
+      } else {
+        _mostrarError('Error al añadir a lista: ${response.body}');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión: $e');
+    }
   }
 
   void _confirmarEliminacion() async {
@@ -29,7 +216,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           (context) => AlertDialog(
             title: const Text('Confirmar eliminación'),
             content: const Text(
-              '¿Estás segura de que deseas eliminar esta pelicula?',
+              '¿Estás segura de que deseas eliminar esta película?',
             ),
             actions: [
               TextButton(
@@ -64,10 +251,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           Navigator.pop(context, {'eliminado': true});
         }
       } else {
-        _mostrarError('Error al eliminar la pelicula. Intenta de nuevo.');
+        _mostrarError('Error al eliminar la película. Intenta de nuevo.');
       }
     } catch (e) {
-      _mostrarError('Error de conexión al eliminar la pelicula.');
+      _mostrarError('Error de conexión al eliminar la película.');
     }
   }
 
@@ -312,7 +499,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                     ),
                   ),
                 ),
-
                 ElevatedButton.icon(
                   onPressed: _confirmarEliminacion,
                   icon: const Icon(Icons.delete),
@@ -330,7 +516,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _mostrarDialogoListas,
                   icon: const Icon(Icons.playlist_add),
                   label: const Text("A lista"),
                   style: ElevatedButton.styleFrom(

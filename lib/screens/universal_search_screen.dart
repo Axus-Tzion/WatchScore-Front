@@ -144,7 +144,13 @@ class _UniversalSearchScreenState extends State<UniversalSearchScreen> {
           } else {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => SerieDetailScreen(serie: item)),
+              MaterialPageRoute(
+                builder:
+                    (_) => SerieDetailScreen(
+                      userData: widget.userData,
+                      serie: item,
+                    ),
+              ),
             );
           }
         },

@@ -6,7 +6,8 @@ import 'package:watchscorefront/screens/universal_search_screen.dart';
 import 'package:watchscorefront/widgets/registerContent_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Map<String, dynamic> userData;
+  const HomeScreen({super.key, required this.userData});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -14,16 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  late Map<String, dynamic> _userData;
   final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _userData =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
-        {};
-  }
 
   @override
   void dispose() {
@@ -31,20 +23,28 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  final List<Widget> _tabScreens = [
-    const _HomeTabContent(),
-    const MoviesList(),
-    const SeriesList(),
+  List<Widget> get _tabScreens => [
+    _HomeTabContent(userData: widget.userData),
+    MoviesList(userData: widget.userData),
+    SeriesList(userData: widget.userData),
   ];
 
   void _onTabTapped(int index) {
     if (index == 3) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const RegisterContentScreen()),
+        MaterialPageRoute(
+          builder:
+              (context) => RegisterContentScreen(userData: widget.userData),
+        ),
       );
     } else if (index == 4) {
-      Navigator.pushNamed(context, '/profile', arguments: _userData);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProfileScreen(userData: widget.userData),
+        ),
+      );
     } else {
       setState(() => _currentIndex = index);
     }
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UniversalSearchScreen(userData: _userData),
+        builder: (context) => UniversalSearchScreen(userData: widget.userData),
       ),
     );
   }
@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _tabScreens[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: _tabScreens),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex > 2 ? 0 : _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -126,7 +126,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeTabContent extends StatelessWidget {
-  const _HomeTabContent();
+  final Map<String, dynamic> userData;
+
+  const _HomeTabContent({required this.userData});
 
   @override
   Widget build(BuildContext context) {
@@ -135,66 +137,62 @@ class _HomeTabContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionTitle('Películas populares'),
-          SizedBox(height: 220, child: MoviesList(showOnlyPopular: true)),
+          SizedBox(
+            height: 220,
+            child: MoviesList(showOnlyPopular: true, userData: userData),
+          ),
           const SectionTitle('Series populares'),
-          SizedBox(height: 220, child: SeriesList(showOnlyPopular: true)),
+          SizedBox(
+            height: 220,
+            child: SeriesList(showOnlyPopular: true, userData: userData),
+          ),
           const SectionTitle('Recomendaciones para ti'),
-          SizedBox(height: 220, child: MoviesList(showRecommendations: true)),
+          SizedBox(
+            height: 220,
+            child: MoviesList(showRecommendations: true, userData: userData),
+          ),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton(
-                  onPressed:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MoviesList(),
-                        ),
-                      ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  child: const Text(
-                    'Ver todas las películas',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                _buildNavigationButton(
+                  context,
+                  'Películas',
+                  MoviesList(userData: userData),
                 ),
-                ElevatedButton(
-                  onPressed:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SeriesList(),
-                        ),
-                      ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  child: const Text(
-                    'Ver todas las series',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                _buildNavigationButton(
+                  context,
+                  'Series',
+                  SeriesList(userData: userData),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationButton(
+    BuildContext context,
+    String text,
+    Widget screen,
+  ) {
+    return ElevatedButton(
+      onPressed:
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => screen),
+          ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.deepPurple,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      ),
+      child: Text(
+        'Ver todas las $text',
+        style: const TextStyle(color: Colors.white),
       ),
     );
   }

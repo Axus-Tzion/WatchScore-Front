@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 
 class MoviesRegister extends StatefulWidget {
-  const MoviesRegister({super.key});
+  final Map<String, dynamic> userData;
+  const MoviesRegister({super.key, required this.userData});
 
   @override
   State<MoviesRegister> createState() => _MoviesRegisterState();
@@ -135,7 +136,9 @@ class _MoviesRegisterState extends State<MoviesRegister> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MoviesRegister()),
+          MaterialPageRoute(
+            builder: (_) => MoviesRegister(userData: widget.userData),
+          ),
         );
       } else if (response.statusCode == 409) {
         ScaffoldMessenger.of(context).showSnackBar(

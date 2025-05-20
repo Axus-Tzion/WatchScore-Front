@@ -6,8 +6,13 @@ import 'package:watchscorefront/screens/seriesRegister_screen.dart';
 
 class SeriesList extends StatefulWidget {
   final bool showOnlyPopular;
+  final Map<String, dynamic> userData;
 
-  const SeriesList({super.key, this.showOnlyPopular = false});
+  const SeriesList({
+    super.key,
+    this.showOnlyPopular = false,
+    required this.userData,
+  });
 
   @override
   State<SeriesList> createState() => _SeriesListState();
@@ -41,6 +46,10 @@ class _SeriesListState extends State<SeriesList> {
     try {
       final response = await http.get(
         Uri.parse('https://watchscore-1.onrender.com/series/'),
+        headers: {
+          'Authorization': 'Bearer ${widget.userData['token']}',
+          'Content-Type': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
@@ -101,6 +110,22 @@ class _SeriesListState extends State<SeriesList> {
             color: Colors.white,
           ),
         ),
+        actions: [
+          if (!widget.showOnlyPopular &&
+              widget.userData['identificacion'] != null)
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => SeriesRegister(userData: widget.userData),
+                  ),
+                ).then((_) => _fetchSeries());
+              },
+            ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
@@ -147,7 +172,10 @@ class _SeriesListState extends State<SeriesList> {
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (_) => SerieDetailScreen(serie: serie),
+                                      (_) => SerieDetailScreen(
+                                        serie: serie,
+                                        userData: widget.userData,
+                                      ),
                                 ),
                               );
                               if (result == true) {
