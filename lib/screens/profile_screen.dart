@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:watchscorefront/screens/listViewUser.dart';
 import 'package:watchscorefront/screens/login_screen.dart';
 import 'package:watchscorefront/screens/userListsScreen.dart';
-
-// Asegúrate de que esta ruta sea correcta si existe
-// import 'package:watchscorefront/screens/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? userData;
 
-  const ProfileScreen({super.key, this.userData});
+  const ProfileScreen({super.key, required this.userData});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -28,24 +26,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Debugging: Imprime todas las claves y valores guardados en SharedPreferences
     print('--- SharedPreferences Content in ProfileScreen ---');
     prefs.getKeys().forEach((key) {
       print('$key: ${prefs.get(key)} (Type: ${prefs.get(key)?.runtimeType})');
     });
     print('----------------------------------------------------');
 
-    // Prioriza los datos pasados al constructor si existen
     if (widget.userData != null && widget.userData!.isNotEmpty) {
       setState(() {
         _userData = widget.userData!;
         _isLoading = false;
         print('Datos cargados desde widget.userData: $_userData');
       });
-      return; // Salir, ya tenemos los datos
+      return;
     }
 
-    // Si no hay datos en el widget, intenta cargarlos desde SharedPreferences
     final String? userIdentificacionString = prefs.getString(
       'userIdentificacion',
     );
@@ -99,12 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextButton(
                 onPressed: () async {
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs
-                      .clear(); // Limpia todos los datos de SharedPreferences
-                  // O si prefieres ser más específico:
-                  // await prefs.remove('isLoggedIn');
-                  // await prefs.remove('userIdentificacion');
-                  // ... remueve cada clave de usuario
+                  await prefs.clear();
 
                   Navigator.pushAndRemoveUntil(
                     context,
@@ -347,7 +337,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => UserListsScreen(userData: _userData),
+                    builder:
+                        (context) => ListUserScreen(
+                          userId: _userData['identificacion'], // Esto es int
+                          userData: _userData,
+                        ),
                   ),
                 );
               },

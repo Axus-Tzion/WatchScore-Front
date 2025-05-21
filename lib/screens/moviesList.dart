@@ -197,7 +197,10 @@ class _MoviesListState extends State<MoviesList> {
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (_) => MovieDetailScreen(movie: movie),
+                                      (_) => MovieDetailScreen(
+                                        movie: movie,
+                                        userData: widget.userData,
+                                      ),
                                 ),
                               );
                               if (result == true) {

@@ -7,8 +7,13 @@ import 'package:watchscorefront/screens/editSerie_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
   final Map<String, dynamic> movie;
+  final Map<String, dynamic> userData;
 
-  const MovieDetailScreen({super.key, required this.movie});
+  const MovieDetailScreen({
+    super.key,
+    required this.movie,
+    required this.userData,
+  });
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -26,187 +31,211 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     movie = widget.movie;
   }
 
-  void _mostrarDialogoListas() async {
-    await _cargarListasUsuario();
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: Text(
-                  _creandoNuevaLista ? 'Crear nueva lista' : 'Tus listas',
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_creandoNuevaLista) _buildCrearListaContent(),
-                      if (!_creandoNuevaLista) _buildListasExistentesContent(),
-                    ],
-                  ),
-                ),
-                actions: _buildDialogActions(setState),
-              );
-            },
-          ),
-    );
-  }
-
-  Widget _buildCrearListaContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(
-          controller: _nombreListaController,
-          decoration: const InputDecoration(
-            labelText: 'Nombre de la lista',
-            border: OutlineInputBorder(),
-            hintText: 'Ej: Favoritas, Por ver...',
-          ),
-          autofocus: true,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildListasExistentesContent() {
-    if (_listasUsuario.isEmpty) {
-      return const Column(
-        children: [
-          Icon(Icons.list, size: 50, color: Colors.grey),
-          SizedBox(height: 10),
-          Text('No tienes listas creadas aún'),
-        ],
-      );
-    }
-
-    return SizedBox(
-      height: 200,
-      child: ListView.builder(
-        itemCount: _listasUsuario.length,
-        itemBuilder: (context, index) {
-          final lista = _listasUsuario[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            child: ListTile(
-              leading: const Icon(Icons.list),
-              title: Text(lista['nombre']),
-              subtitle: Text('${lista['peliculas']?.length ?? 0} películas'),
-              onTap: () {
-                _anadirPeliculaALista(lista['id'].toString());
-                Navigator.pop(context);
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  List<Widget> _buildDialogActions(StateSetter setState) {
-    return [
-      if (_creandoNuevaLista) ...[
-        TextButton(
-          onPressed: () {
-            _nombreListaController.clear();
-            setState(() => _creandoNuevaLista = false);
-          },
-          child: const Text('Volver'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            if (_nombreListaController.text.trim().isNotEmpty) {
-              await _crearNuevaLista(_nombreListaController.text.trim());
-              if (mounted) Navigator.pop(context);
-            }
-          },
-          child: const Text('Crear'),
-        ),
-      ] else ...[
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            setState(() => _creandoNuevaLista = true);
-          },
-          child: const Text('Nueva lista'),
-        ),
-      ],
-    ];
-  }
-
   Future<void> _cargarListasUsuario() async {
+    final userId = widget.userData['identificacion'];
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/listas/misListas/$userId',
+    );
+
     try {
-      final response = await http.get(
-        Uri.parse('https://watchscore-1.onrender.com/listas/mis'),
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _listasUsuario =
+              data
+                  .map<Map<String, dynamic>>(
+                    (e) => Map<String, dynamic>.from(e),
+                  )
+                  .toList();
+        });
+      } else {
+        _mostrarError('No se pudieron cargar las listas del usuario.');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión al cargar las listas.');
+    }
+  }
+
+  Future<void> _agregarPeliculaALista(String listaNombre) async {
+    final peliculaTitulo = movie['titulo'];
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/listas/agregar/$listaNombre/peliculas/$peliculaTitulo',
+    );
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
-        setState(() {
-          _listasUsuario = List<Map<String, dynamic>>.from(
-            jsonDecode(response.body),
-          );
-        });
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Película agregada a la lista correctamente'),
+          ),
+        );
       } else {
-        _mostrarError('Error al cargar listas: ${response.statusCode}');
+        _mostrarError('Error al agregar la película a la lista.');
       }
     } catch (e) {
-      _mostrarError('Error de conexión: $e');
+      _mostrarError('Error de conexión al agregar la película.');
     }
   }
 
-  Future<void> _crearNuevaLista(String nombreLista) async {
+  Future<void> _crearNuevaListaYAgregarPelicula(String nombreLista) async {
+    final userId = widget.userData['identificacion'];
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/listas/crear/$userId',
+    );
+
+    final body = json.encode({'nombre': nombreLista});
+
     try {
       final response = await http.post(
-        Uri.parse('https://watchscore-1.onrender.com/listas/usuario'),
+        url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'nombre': nombreLista}),
+        body: body,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final listaCreada = jsonDecode(response.body);
-        await _anadirPeliculaALista(listaCreada['id'].toString());
-        _nombreListaController.clear();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('"$nombreLista" creada y película añadida')),
-          );
-        }
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lista creada exitosamente')),
+        );
       } else {
-        _mostrarError('Error al crear lista: ${response.body}');
+        _mostrarError('Error al crear la nueva lista.');
       }
     } catch (e) {
-      _mostrarError('Error de conexión: $e');
+      _mostrarError('Error de conexión al crear la lista.');
     }
   }
 
-  Future<void> _anadirPeliculaALista(String listaId) async {
-    try {
-      final response = await http.post(
-        Uri.parse(
-          'https://watchscore-1.onrender.com/listas/agregar/$listaId/peliculas',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'peliculaId': movie['id']}),
-      );
+  Future<void> _mostrarDialogoListas() async {
+    await _cargarListasUsuario();
+    _creandoNuevaLista = false;
+    _nombreListaController.clear();
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Película añadida a la lista')),
-          );
-        }
-      } else {
-        _mostrarError('Error al añadir a lista: ${response.body}');
-      }
-    } catch (e) {
-      _mostrarError('Error de conexión: $e');
-    }
+    showDialog(
+      context: context,
+      builder: (context) {
+        String? listaSeleccionadaNombre;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Agregar a lista'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_creandoNuevaLista) ...[
+                      if (_listasUsuario.isEmpty)
+                        const Text(
+                          'No tienes listas creadas. Puedes crear una nueva.',
+                        )
+                      else
+                        Expanded(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _listasUsuario.length,
+                            itemBuilder: (context, index) {
+                              final lista = _listasUsuario[index];
+                              final nombre = lista['nombre'] ?? 'Sin nombre';
+
+                              return RadioListTile<String>(
+                                title: Text(nombre),
+                                value: nombre,
+                                groupValue: listaSeleccionadaNombre,
+                                onChanged: (value) {
+                                  setStateDialog(() {
+                                    listaSeleccionadaNombre = value;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                      TextButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('Crear nueva lista'),
+                        onPressed: () {
+                          setStateDialog(() {
+                            _creandoNuevaLista = true;
+                          });
+                        },
+                      ),
+                    ],
+                    if (_creandoNuevaLista) ...[
+                      TextField(
+                        controller: _nombreListaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de la nueva lista',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              setStateDialog(() {
+                                _creandoNuevaLista = false;
+                              });
+                            },
+                            child: const Text('Cancelar'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              final nombre = _nombreListaController.text.trim();
+                              if (nombre.isNotEmpty) {
+                                Navigator.pop(context);
+                                _crearNuevaListaYAgregarPelicula(nombre);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'El nombre no puede estar vacío',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Crear y agregar'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                if (!_creandoNuevaLista)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                if (!_creandoNuevaLista)
+                  ElevatedButton(
+                    onPressed:
+                        listaSeleccionadaNombre != null
+                            ? () {
+                              Navigator.pop(context);
+                              _agregarPeliculaALista(listaSeleccionadaNombre!);
+                            }
+                            : null,
+                    child: const Text('Agregar'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _confirmarEliminacion() async {
@@ -284,24 +313,23 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        title: const Text('Detalle de Pelicula'),
         backgroundColor: Colors.deepPurple,
-        title: const Text('Detalles de la Película'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Icono
             CircleAvatar(
               radius: 60,
               backgroundColor: Colors.deepPurple[50],
-              child: const Icon(
-                Icons.movie,
-                size: 60,
-                color: Colors.deepPurple,
-              ),
+              child: const Icon(Icons.tv, size: 60, color: Colors.deepPurple),
             ),
             const SizedBox(height: 20),
+
+            // Título
             Text(
               movie['titulo'] ?? 'Sin título',
               style: const TextStyle(
@@ -312,11 +340,15 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
+
+            // Género y año
             Text(
               '${movie['genero'] ?? 'Género desconocido'} · ${movie['lanzamiento'] ?? 'Año desconocido'}',
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
               textAlign: TextAlign.center,
             ),
+
+            // Director
             InkWell(
               onTap:
                   isDirectorMap
@@ -344,6 +376,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Detalles técnicos
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -379,14 +413,14 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                   Row(
                     children: [
                       const Icon(
-                        Icons.timer,
+                        Icons.list,
                         size: 20,
                         color: Colors.deepPurple,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Duración: ${movie['duracion'] ?? 'Desconocida'}',
+                          'Duración: ${movie['duracion'] ?? 'Desconocido'}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
@@ -410,6 +444,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 ],
               ),
             ),
+
+            // Actores
             if (actores.isNotEmpty) ...[
               const Align(
                 alignment: Alignment.centerLeft,
@@ -466,6 +502,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               ),
               const SizedBox(height: 30),
             ],
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -552,89 +589,90 @@ class PersonDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String nombre = person['nombre'] ?? 'Nombre no disponible';
-    final String nacionalidad = person['nacionalidad'] ?? 'No disponible';
-    final String fechaNacimiento = person['fechaNacimiento'] ?? 'No disponible';
-    final String genero = person['genero'] ?? 'No especificado';
-    final List<dynamic> trabajos =
-        person['peliculas'] ?? person['series'] ?? [];
+    final nombre = person['nombre'] ?? 'Desconocido';
+    final nacionalidad = person['nacionalidad'] ?? 'Desconocida';
+    final fechaNacimiento = person['fechaNacimiento'] ?? 'No especificada';
+    final genero = person['genero'] ?? 'No especificado';
+
+    final List<dynamic> seriesRaw = person['series'] ?? [];
+    final List<String> series = seriesRaw.map((e) => e.toString()).toList();
+
+    final List<dynamic> peliculasRaw = person['peliculas'] ?? [];
+    final List<String> peliculas =
+        peliculasRaw.map((e) => e.toString()).toList();
+
+    // Debug prints
+    print('Series raw: $seriesRaw');
+    print('Películas raw: $peliculasRaw');
 
     return Scaffold(
-      appBar: AppBar(title: Text(nombre), backgroundColor: Colors.deepPurple),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: Text('$type: $nombre')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
           children: [
-            Row(
-              children: [
-                Text(
-                  nombre,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Chip(
-                  label: Text(type),
-                  backgroundColor: Colors.deepPurple[50],
-                  labelStyle: const TextStyle(color: Colors.deepPurple),
-                ),
-              ],
+            Text(
+              nombre,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 10),
+            Text(
+              'Nacionalidad: $nacionalidad',
+              style: const TextStyle(fontSize: 18),
+            ),
+            Text(
+              'Fecha de nacimiento: $fechaNacimiento',
+              style: const TextStyle(fontSize: 18),
+            ),
+            Text('Género: $genero', style: const TextStyle(fontSize: 18)),
             const SizedBox(height: 20),
-            _InfoRow(label: 'Nacionalidad', value: nacionalidad),
-            _InfoRow(label: 'Fecha de nacimiento', value: fechaNacimiento),
-            _InfoRow(label: 'Género', value: genero),
-            const SizedBox(height: 20),
-            if (trabajos.isNotEmpty) ...[
-              Text(
-                type == 'Actor' ? 'Películas/Series' : 'Películas dirigidas',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.deepPurple,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ...trabajos.map((trabajo) {
-                String titulo =
-                    trabajo is Map
-                        ? trabajo['titulo'] ?? trabajo.toString()
-                        : trabajo.toString();
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    '• $titulo',
-                    style: const TextStyle(fontSize: 16),
+            Text(
+              'Series relacionadas:',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            ...series.isNotEmpty
+                ? series
+                    .map(
+                      (serie) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          serie,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    )
+                    .toList()
+                : [
+                  const Text(
+                    'No hay series relacionadas',
+                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
                   ),
-                );
-              }).toList(),
-            ],
+                ],
+            const SizedBox(height: 20),
+            Text(
+              'Películas relacionadas:',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            ...peliculas.isNotEmpty
+                ? peliculas
+                    .map(
+                      (pelicula) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          pelicula,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    )
+                    .toList()
+                : [
+                  const Text(
+                    'No hay películas relacionadas',
+                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                  ),
+                ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow({super.key, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-          Expanded(child: Text(value)),
-        ],
       ),
     );
   }
