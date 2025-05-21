@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watchscorefront/screens/login_screen.dart';
 import 'package:watchscorefront/screens/userListsScreen.dart';
 
+// Asegúrate de que esta ruta sea correcta si existe
+// import 'package:watchscorefront/screens/edit_profile_screen.dart';
+
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? userData;
 
@@ -25,20 +28,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    setState(() {
-      _userData =
-          widget.userData ??
-          {
-            'identificacion': prefs.getInt('userIdentificacion'),
-            'email': prefs.getString('userEmail'),
-            'nombre': prefs.getString('userName'),
-            'apellido': prefs.getString('userLastName'),
-            'celular': prefs.getString('userPhone'),
-            'ciudad': prefs.getString('userCity'),
-            'fechaNacimiento': prefs.getString('userBirthDate'),
-          };
-      _isLoading = false;
+    // Debugging: Imprime todas las claves y valores guardados en SharedPreferences
+    print('--- SharedPreferences Content in ProfileScreen ---');
+    prefs.getKeys().forEach((key) {
+      print('$key: ${prefs.get(key)} (Type: ${prefs.get(key)?.runtimeType})');
     });
+    print('----------------------------------------------------');
+
+    // Prioriza los datos pasados al constructor si existen
+    if (widget.userData != null && widget.userData!.isNotEmpty) {
+      setState(() {
+        _userData = widget.userData!;
+        _isLoading = false;
+        print('Datos cargados desde widget.userData: $_userData');
+      });
+      return; // Salir, ya tenemos los datos
+    }
+
+    // Si no hay datos en el widget, intenta cargarlos desde SharedPreferences
+    final String? userIdentificacionString = prefs.getString(
+      'userIdentificacion',
+    );
+    final String? userEmail = prefs.getString('userEmail');
+    final String? userName = prefs.getString('userName');
+    final String? userLastName = prefs.getString('userLastName');
+    final String? userPhone = prefs.getString('userPhone');
+    final String? userCity = prefs.getString('userCity');
+    final String? userBirthDate = prefs.getString('userBirthDate');
+
+    setState(() {
+      _userData = {
+        'identificacion':
+            userIdentificacionString != null
+                ? int.tryParse(userIdentificacionString)
+                : null,
+        'email': userEmail,
+        'nombre': userName,
+        'apellido': userLastName,
+        'celular': userPhone,
+        'ciudad': userCity,
+        'fechaNacimiento': userBirthDate,
+      };
+      _isLoading = false;
+      print(
+        'Datos cargados desde SharedPreferences en ProfileScreen: $_userData',
+      );
+    });
+
+    if (_userData['email'] == null) {
+      print(
+        'Advertencia: Email de usuario no encontrado en SharedPreferences. Los datos pueden estar incompletos o no guardados.',
+      );
+    }
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -58,7 +99,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextButton(
                 onPressed: () async {
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('isLoggedIn', false);
+                  await prefs
+                      .clear(); // Limpia todos los datos de SharedPreferences
+                  // O si prefieres ser más específico:
+                  // await prefs.remove('isLoggedIn');
+                  // await prefs.remove('userIdentificacion');
+                  // ... remueve cada clave de usuario
+
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -157,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          '${_userData['nombre'] ?? ''} ${_userData['apellido'] ?? ''}',
+          '${_userData['nombre']?.toString() ?? ''} ${_userData['apellido']?.toString() ?? ''}',
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -166,18 +213,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          _userData['email'] ?? '',
+          _userData['email']?.toString() ?? '',
           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
         const SizedBox(height: 8),
-        if (_userData['ciudad'] != null)
+        if (_userData['ciudad'] != null &&
+            (_userData['ciudad'] as String).isNotEmpty)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 4),
               Text(
-                _userData['ciudad'] ?? '',
+                _userData['ciudad']?.toString() ?? '',
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
             ],
@@ -196,20 +244,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildInfoTile(
         icon: Icons.person,
         title: 'Nombre completo',
-        value: '${_userData['nombre'] ?? ''} ${_userData['apellido'] ?? ''}',
+        value:
+            '${_userData['nombre']?.toString() ?? ''} ${_userData['apellido']?.toString() ?? ''}',
       ),
       _buildInfoTile(
         icon: Icons.email,
         title: 'Correo electrónico',
-        value: _userData['email'] ?? 'No especificado',
+        value: _userData['email']?.toString() ?? 'No especificado',
       ),
-      if (_userData['celular'] != null)
+      if (_userData['celular'] != null &&
+          (_userData['celular'] as String).isNotEmpty)
         _buildInfoTile(
           icon: Icons.phone,
           title: 'Teléfono',
           value: _userData['celular']?.toString() ?? '',
         ),
-      if (_userData['fechaNacimiento'] != null)
+      if (_userData['fechaNacimiento'] != null &&
+          (_userData['fechaNacimiento'] as String).isNotEmpty)
         _buildInfoTile(
           icon: Icons.cake,
           title: 'Fecha de nacimiento',
@@ -242,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            ...infoItems,
+            if (infoItems.isNotEmpty) ...infoItems,
           ],
         ),
       ),

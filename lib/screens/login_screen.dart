@@ -4,6 +4,9 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watchscorefront/screens/register_screen.dart';
 import 'package:watchscorefront/screens/home_screen.dart';
+// Importa ProfileScreen si la estás usando directamente desde HomeScreen
+// Aunque lo pasas a HomeScreen, es posible que HomeScreen a su vez pase los datos a ProfileScreen
+import 'package:watchscorefront/screens/profile_screen.dart'; // ¡Asegúrate de que esta ruta sea correcta!
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,11 +39,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final responseBody = jsonDecode(response.body);
 
+      // Imprime la respuesta completa del backend para depurar
+      print('Respuesta del backend en Login: $responseBody');
+
       if (response.statusCode == 200) {
         // Guardar datos de sesión y obtener userData
+        // Pasamos responseBody directamente, que es el JSON del usuario
         final userData = await _saveSessionData(responseBody);
 
-        // Navegar a HomeScreen con los datos del usuario
+        // Navegar a HomeScreen, que probablemente contendrá la ProfileScreen
+        // Es crucial que HomeScreen sepa cómo manejar estos datos y pasarlos a ProfileScreen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => HomeScreen(userData: userData)),
@@ -62,34 +70,64 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<Map<String, dynamic>> _saveSessionData(
-    Map<String, dynamic> response,
+    Map<String, dynamic>
+    responseBody, // Renombrado a responseBody para mayor claridad
   ) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Crear objeto con datos del usuario
-    final userData = {
-      'identificacion': response['idUsuario'],
-      'email': _emailController.text.trim(),
-      'nombre': response['nombre'] ?? '',
-      'apellido': response['apellido'] ?? '',
-      'celular': response['telefono']?.toString() ?? '',
-      'ciudad': response['ciudad'] ?? '',
-      'fechaNacimiento': response['fechaNacimiento'] ?? '',
-      'token': response['token'] ?? '',
+    // Las claves aquí deben coincidir con los campos de tu entidad Usuario en el backend
+    // y cómo se serializan en el JSON de respuesta.
+    // Asumiendo que el backend devuelve las claves como en la entidad:
+    // identificacion, email, nombre, apellido, celular, ciudad, fechaNacimiento
+
+    // **CORRECCIÓN CLAVE AQUÍ:**
+    // responseBody['identificacion'] es la clave de tu entidad, no response['idUsuario']
+    await prefs.setString(
+      'userIdentificacion',
+      responseBody['identificacion']?.toString() ?? '',
+    );
+    await prefs.setString('userEmail', responseBody['email']?.toString() ?? '');
+    await prefs.setString('userName', responseBody['nombre']?.toString() ?? '');
+    await prefs.setString(
+      'userLastName',
+      responseBody['apellido']?.toString() ?? '',
+    );
+    // responseBody['celular'] es la clave de tu entidad, no response['telefono']
+    await prefs.setString(
+      'userPhone',
+      responseBody['celular']?.toString() ?? '',
+    ); // Guarda como String
+    await prefs.setString('userCity', responseBody['ciudad']?.toString() ?? '');
+    await prefs.setString(
+      'userBirthDate',
+      responseBody['fechaNacimiento']?.toString() ?? '',
+    ); // Fecha viene como String (YYYY-MM-DD)
+    // Si tu backend devuelve un token, asegúrate de que la clave sea la correcta, por ejemplo 'token'
+    // await prefs.setString('authToken', responseBody['token']?.toString() ?? ''); // Si hay token en la respuesta
+
+    await prefs.setBool('isLoggedIn', true); // Marca al usuario como logueado
+
+    // Imprime lo que se ha guardado en SharedPreferences para verificar
+    print('--- SharedPreferences content after login ---');
+    prefs.getKeys().forEach((key) {
+      print('$key: ${prefs.get(key)} (Type: ${prefs.get(key)?.runtimeType})');
+    });
+    print('---------------------------------------------');
+
+    // Retorna un mapa con los datos del usuario para pasarlos a la siguiente pantalla
+    // Esto es lo que se pasará a HomeScreen, y luego potencialmente a ProfileScreen
+    return {
+      'identificacion': responseBody['identificacion'],
+      'email': responseBody['email'],
+      'nombre': responseBody['nombre'],
+      'apellido': responseBody['apellido'],
+      'celular':
+          responseBody['celular']
+              ?.toString(), // Asegúrate de que HomeScreen reciba String
+      'ciudad': responseBody['ciudad'],
+      'fechaNacimiento': responseBody['fechaNacimiento'],
+      // 'token': responseBody['token'], // Si hay token
     };
-
-    // Guardar en SharedPreferences
-    await prefs.setBool('isLoggedIn', true);
-    await prefs.setString('userIdentificacion', response['identificacion']);
-    await prefs.setString('userEmail', userData['email']);
-    await prefs.setString('userName', userData['nombre']);
-    await prefs.setString('userLastName', userData['apellido']);
-    await prefs.setString('userPhone', userData['celular']);
-    await prefs.setString('userCity', userData['ciudad']);
-    await prefs.setString('userBirthDate', userData['fechaNacimiento']);
-    await prefs.setString('authToken', userData['token']);
-
-    return userData;
   }
 
   void _handleLoginError(int statusCode, Map<String, dynamic> response) {
@@ -132,7 +170,9 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                const FlutterLogo(size: 100),
+                const FlutterLogo(
+                  size: 100,
+                ), // Cambia esto por tu logo si tienes uno
                 const SizedBox(height: 30),
                 const Text(
                   'Iniciar Sesión',
