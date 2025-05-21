@@ -5,7 +5,8 @@ import 'package:watchscorefront/screens/moviesRegister_screen.dart';
 import 'package:watchscorefront/screens/seriesRegister_screen.dart';
 
 class RegisterContentScreen extends StatelessWidget {
-  const RegisterContentScreen({super.key});
+  final Map<String, dynamic> userData;
+  const RegisterContentScreen({super.key, required this.userData});
 
   @override
   Widget build(BuildContext context) {
@@ -42,13 +43,13 @@ class RegisterContentScreen extends StatelessWidget {
               _buildButton(
                 context,
                 label: 'Registrar Película',
-                screen: const MoviesRegister(),
+                screen: MoviesRegister(userData: userData),
               ),
               const SizedBox(height: 20),
               _buildButton(
                 context,
                 label: 'Registrar Serie',
-                screen: const SeriesRegister(),
+                screen: SeriesRegister(userData: userData),
               ),
               const SizedBox(height: 20),
               _buildButton(

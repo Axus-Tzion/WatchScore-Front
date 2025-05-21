@@ -6,11 +6,13 @@ import 'package:watchscorefront/screens/movieDetails_screen.dart';
 class MoviesList extends StatefulWidget {
   final bool showOnlyPopular;
   final bool showRecommendations;
+  final Map<String, dynamic> userData;
 
   const MoviesList({
     super.key,
     this.showOnlyPopular = false,
     this.showRecommendations = false,
+    required this.userData,
   });
 
   @override
@@ -195,7 +197,10 @@ class _MoviesListState extends State<MoviesList> {
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (_) => MovieDetailScreen(movie: movie),
+                                      (_) => MovieDetailScreen(
+                                        movie: movie,
+                                        userData: widget.userData,
+                                      ),
                                 ),
                               );
                               if (result == true) {

@@ -1,11 +1,18 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:watchscorefront/screens/editSerie_screen.dart';
 
 class SerieDetailScreen extends StatefulWidget {
   final Map<String, dynamic> serie;
+  final Map<String, dynamic> userData;
 
-  const SerieDetailScreen({super.key, required this.serie});
+  const SerieDetailScreen({
+    super.key,
+    required this.serie,
+    required this.userData,
+  });
 
   @override
   State<SerieDetailScreen> createState() => _SerieDetailScreenState();
@@ -13,11 +20,221 @@ class SerieDetailScreen extends StatefulWidget {
 
 class _SerieDetailScreenState extends State<SerieDetailScreen> {
   late Map<String, dynamic> serie;
+  final TextEditingController _nombreListaController = TextEditingController();
+  List<Map<String, dynamic>> _listasUsuario = [];
+  bool _creandoNuevaLista = false;
 
   @override
   void initState() {
     super.initState();
     serie = widget.serie;
+  }
+
+  Future<void> _cargarListasUsuario() async {
+    final userId = widget.userData['identificacion'];
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/listas/misListas/$userId',
+    );
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _listasUsuario =
+              data
+                  .map<Map<String, dynamic>>(
+                    (e) => Map<String, dynamic>.from(e),
+                  )
+                  .toList();
+        });
+      } else {
+        _mostrarError('No se pudieron cargar las listas del usuario.');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión al cargar las listas.');
+    }
+  }
+
+  Future<void> _agregarSerieALista(String listaNombre) async {
+    final serieTitulo = serie['titulo'];
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/listas/agregar/$listaNombre/series/$serieTitulo',
+    );
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Serie agregada a la lista correctamente'),
+          ),
+        );
+      } else {
+        _mostrarError('Error al agregar la serie a la lista.');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión al agregar la serie.');
+    }
+  }
+
+  Future<void> _crearNuevaListaYAgregarPelicula(String nombreLista) async {
+    final userId = widget.userData['identificacion'];
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/listas/crear/$userId',
+    );
+
+    final body = json.encode({'nombre': nombreLista});
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lista creada exitosamente')),
+        );
+      } else {
+        _mostrarError('Error al crear la nueva lista.');
+      }
+    } catch (e) {
+      _mostrarError('Error de conexión al crear la lista.');
+    }
+  }
+
+  Future<void> _mostrarDialogoListas() async {
+    await _cargarListasUsuario();
+    _creandoNuevaLista = false;
+    _nombreListaController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        String? listaSeleccionadaNombre;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Agregar a lista'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_creandoNuevaLista) ...[
+                      if (_listasUsuario.isEmpty)
+                        const Text(
+                          'No tienes listas creadas. Puedes crear una nueva.',
+                        )
+                      else
+                        Expanded(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _listasUsuario.length,
+                            itemBuilder: (context, index) {
+                              final lista = _listasUsuario[index];
+                              final nombre = lista['nombre'] ?? 'Sin nombre';
+
+                              return RadioListTile<String>(
+                                title: Text(nombre),
+                                value: nombre,
+                                groupValue: listaSeleccionadaNombre,
+                                onChanged: (value) {
+                                  setStateDialog(() {
+                                    listaSeleccionadaNombre = value;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                      TextButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('Crear nueva lista'),
+                        onPressed: () {
+                          setStateDialog(() {
+                            _creandoNuevaLista = true;
+                          });
+                        },
+                      ),
+                    ],
+                    if (_creandoNuevaLista) ...[
+                      TextField(
+                        controller: _nombreListaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de la nueva lista',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              setStateDialog(() {
+                                _creandoNuevaLista = false;
+                              });
+                            },
+                            child: const Text('Cancelar'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              final nombre = _nombreListaController.text.trim();
+                              if (nombre.isNotEmpty) {
+                                Navigator.pop(context);
+                                _crearNuevaListaYAgregarPelicula(nombre);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'El nombre no puede estar vacío',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Crear y agregar'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                if (!_creandoNuevaLista)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                if (!_creandoNuevaLista)
+                  ElevatedButton(
+                    onPressed:
+                        listaSeleccionadaNombre != null
+                            ? () {
+                              Navigator.pop(context);
+                              _agregarSerieALista(listaSeleccionadaNombre!);
+                            }
+                            : null,
+                    child: const Text('Agregar'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _confirmarEliminacion() async {
@@ -106,7 +323,6 @@ class _SerieDetailScreenState extends State<SerieDetailScreen> {
   Widget build(BuildContext context) {
     final List<dynamic> actores = serie['actores'] ?? [];
 
-    // Obtener director (puede ser Map o String)
     final director = serie['director'];
     final bool isDirectorMap = director is Map;
 
@@ -356,7 +572,7 @@ class _SerieDetailScreenState extends State<SerieDetailScreen> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _mostrarDialogoListas,
                   icon: const Icon(Icons.playlist_add),
                   label: const Text("A lista"),
                   style: ElevatedButton.styleFrom(

@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 
 class SeriesRegister extends StatefulWidget {
-  const SeriesRegister({super.key});
+  final Map<String, dynamic> userData;
+
+  const SeriesRegister({super.key, required this.userData});
 
   @override
   State<SeriesRegister> createState() => _SeriesRegisterState();
@@ -143,7 +145,9 @@ class _SeriesRegisterState extends State<SeriesRegister> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const SeriesRegister()),
+          MaterialPageRoute(
+            builder: (_) => SeriesRegister(userData: widget.userData),
+          ),
         );
       } else if (response.statusCode == 409) {
         ScaffoldMessenger.of(context).showSnackBar(

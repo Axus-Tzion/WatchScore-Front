@@ -139,12 +139,24 @@ class _UniversalSearchScreenState extends State<UniversalSearchScreen> {
           if (isMovie) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => MovieDetailScreen(movie: item)),
+              MaterialPageRoute(
+                builder:
+                    (_) => MovieDetailScreen(
+                      movie: item,
+                      userData: widget.userData,
+                    ),
+              ),
             );
           } else {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => SerieDetailScreen(serie: item)),
+              MaterialPageRoute(
+                builder:
+                    (_) => SerieDetailScreen(
+                      userData: widget.userData,
+                      serie: item,
+                    ),
+              ),
             );
           }
         },

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:watchscorefront/screens/listViewUser.dart';
 import 'package:watchscorefront/screens/login_screen.dart';
 import 'package:watchscorefront/screens/userListsScreen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final Map<String, dynamic> userData;
+  final Map<String, dynamic>? userData;
 
   const ProfileScreen({super.key, required this.userData});
 
@@ -14,197 +14,147 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late TextEditingController _identificacionController;
-  late TextEditingController _emailController;
-  late TextEditingController _nombreController;
-  late TextEditingController _apellidoController;
-  late TextEditingController _celularController;
-  late TextEditingController _ciudadController;
-  bool _isLoading = false;
-  bool _isEditing = false;
-  bool _showPassword = false;
-  late TextEditingController _passwordController;
+  Map<String, dynamic> _userData = {};
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _initializeControllers();
+    _loadUserData();
   }
 
-  void _initializeControllers() {
-    _identificacionController = TextEditingController(
-      text: widget.userData['identificacion']?.toString() ?? '',
-    );
-    _emailController = TextEditingController(
-      text: widget.userData['email'] ?? '',
-    );
-    _nombreController = TextEditingController(
-      text: widget.userData['nombre'] ?? '',
-    );
-    _apellidoController = TextEditingController(
-      text: widget.userData['apellido'] ?? '',
-    );
-    _celularController = TextEditingController(
-      text: widget.userData['celular']?.toString() ?? '',
-    );
-    _ciudadController = TextEditingController(
-      text: widget.userData['ciudad'] ?? '',
-    );
-    _passwordController = TextEditingController();
-  }
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
 
-  @override
-  void dispose() {
-    _identificacionController.dispose();
-    _emailController.dispose();
-    _nombreController.dispose();
-    _apellidoController.dispose();
-    _celularController.dispose();
-    _ciudadController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+    print('--- SharedPreferences Content in ProfileScreen ---');
+    prefs.getKeys().forEach((key) {
+      print('$key: ${prefs.get(key)} (Type: ${prefs.get(key)?.runtimeType})');
+    });
+    print('----------------------------------------------------');
 
-  Future<void> _updateProfile() async {
-    setState(() => _isLoading = true);
+    if (widget.userData != null && widget.userData!.isNotEmpty) {
+      setState(() {
+        _userData = widget.userData!;
+        _isLoading = false;
+        print('Datos cargados desde widget.userData: $_userData');
+      });
+      return;
+    }
 
-    try {
-      final Map<String, dynamic> updateData = {
-        'identificacion': _identificacionController.text,
-        'email': _emailController.text,
-        'nombre': _nombreController.text,
-        'apellido': _apellidoController.text,
-        'celular': _celularController.text,
-        'ciudad': _ciudadController.text,
+    final String? userIdentificacionString = prefs.getString(
+      'userIdentificacion',
+    );
+    final String? userEmail = prefs.getString('userEmail');
+    final String? userName = prefs.getString('userName');
+    final String? userLastName = prefs.getString('userLastName');
+    final String? userPhone = prefs.getString('userPhone');
+    final String? userCity = prefs.getString('userCity');
+    final String? userBirthDate = prefs.getString('userBirthDate');
+
+    setState(() {
+      _userData = {
+        'identificacion':
+            userIdentificacionString != null
+                ? int.tryParse(userIdentificacionString)
+                : null,
+        'email': userEmail,
+        'nombre': userName,
+        'apellido': userLastName,
+        'celular': userPhone,
+        'ciudad': userCity,
+        'fechaNacimiento': userBirthDate,
       };
-
-      // Solo agregamos la contraseña si se proporcionó una nueva
-      if (_passwordController.text.isNotEmpty) {
-        updateData['password'] = _passwordController.text;
-      }
-
-      final response = await http.put(
-        Uri.parse('https://watchscore-1.onrender.com/usuarios/'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(updateData),
+      _isLoading = false;
+      print(
+        'Datos cargados desde SharedPreferences en ProfileScreen: $_userData',
       );
+    });
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Perfil actualizado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        setState(() {
-          _isEditing = false;
-          _passwordController.clear();
-        });
-
-        // Actualizar datos locales
-        widget.userData['email'] = _emailController.text;
-        widget.userData['nombre'] = _nombreController.text;
-        widget.userData['apellido'] = _apellidoController.text;
-        widget.userData['celular'] = _celularController.text;
-        widget.userData['ciudad'] = _ciudadController.text;
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar: ${response.body}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error de conexión: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+    if (_userData['email'] == null) {
+      print(
+        'Advertencia: Email de usuario no encontrado en SharedPreferences. Los datos pueden estar incompletos o no guardados.',
       );
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
-  void _logout(BuildContext context) {
+  Future<void> _logout(BuildContext context) async {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Cerrar sesión'),
-          content: const Text('¿Estás seguro que deseas cerrar tu sesión?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Cerrar sesión'),
+            content: const Text(
+              '¿Estás seguro de que deseas cerrar tu sesión?',
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (Route<dynamic> route) => false,
-                );
-              },
-              child: const Text(
-                'Cerrar sesión',
-                style: TextStyle(color: Colors.red),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
               ),
-            ),
-          ],
-        );
-      },
+              TextButton(
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                child: const Text(
+                  'Cerrar sesión',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Mi Perfil', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.deepPurple,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mi Perfil', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.deepPurple,
         actions: [
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.white),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-          if (_isEditing)
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed:
-                  () => setState(() {
-                    _isEditing = false;
-                    _passwordController.clear();
-                    _initializeControllers(); // Resetear valores
-                  }),
-            ),
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.white),
+            onPressed: () {
+              // Navegar a pantalla de edición
+              // Navigator.push(context, MaterialPageRoute(builder: (context) => EditProfileScreen(userData: _userData)));
+            },
+          ),
         ],
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
                 children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          _buildProfileHeader(),
-                          const SizedBox(height: 20),
-                          _buildProfileForm(),
-                          if (_isEditing) _buildPasswordField(),
-                          if (_isEditing) _buildSaveButton(),
-                        ],
-                      ),
-                    ),
-                  ),
-                  _buildBottomActions(context),
+                  _buildProfileHeader(),
+                  const SizedBox(height: 20),
+                  _buildProfileInfo(),
                 ],
               ),
+            ),
+          ),
+          _buildBottomActions(context),
+        ],
+      ),
     );
   }
 
@@ -214,235 +164,208 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Stack(
           alignment: Alignment.bottomRight,
           children: [
-            CircleAvatar(
-              radius: 60,
-              backgroundColor: Colors.deepPurple[100],
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.deepPurple[100],
+                border: Border.all(color: Colors.deepPurple, width: 2),
+              ),
               child: Icon(
                 Icons.person,
                 size: 60,
                 color: Colors.deepPurple[800],
               ),
             ),
-            if (_isEditing)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.camera_alt, color: Colors.white),
-                  onPressed: () {
-                    // Implementar lógica para cambiar foto de perfil
-                  },
-                ),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.deepPurple,
+                shape: BoxShape.circle,
               ),
+              child: const Icon(
+                Icons.camera_alt,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         Text(
-          '${widget.userData['nombre'] ?? ''} ${widget.userData['apellido'] ?? ''}',
+          '${_userData['nombre']?.toString() ?? ''} ${_userData['apellido']?.toString() ?? ''}',
           style: const TextStyle(
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.deepPurple,
           ),
         ),
+        const SizedBox(height: 4),
         Text(
-          widget.userData['email'] ?? '',
+          _userData['email']?.toString() ?? '',
           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
-      ],
-    );
-  }
-
-  Widget _buildProfileForm() {
-    return Column(
-      children: [
-        _buildProfileField(
-          label: 'Identificación',
-          controller: _identificacionController,
-          enabled: false,
-        ),
-        const SizedBox(height: 15),
-        _buildProfileField(
-          label: 'Nombre',
-          controller: _nombreController,
-          enabled: _isEditing,
-        ),
-        const SizedBox(height: 15),
-        _buildProfileField(
-          label: 'Apellido',
-          controller: _apellidoController,
-          enabled: _isEditing,
-        ),
-        const SizedBox(height: 15),
-        _buildProfileField(
-          label: 'Email',
-          controller: _emailController,
-          enabled: _isEditing,
-          keyboardType: TextInputType.emailAddress,
-        ),
-        const SizedBox(height: 15),
-        _buildProfileField(
-          label: 'Celular',
-          controller: _celularController,
-          enabled: _isEditing,
-          keyboardType: TextInputType.phone,
-        ),
-        const SizedBox(height: 15),
-        _buildProfileField(
-          label: 'Ciudad',
-          controller: _ciudadController,
-          enabled: _isEditing,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return Column(
-      children: [
-        const SizedBox(height: 15),
-        TextField(
-          controller: _passwordController,
-          obscureText: !_showPassword,
-          decoration: InputDecoration(
-            labelText: 'Nueva Contraseña',
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.lock, color: Colors.deepPurple),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _showPassword ? Icons.visibility : Icons.visibility_off,
-                color: Colors.deepPurple,
+        const SizedBox(height: 8),
+        if (_userData['ciudad'] != null &&
+            (_userData['ciudad'] as String).isNotEmpty)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(
+                _userData['ciudad']?.toString() ?? '',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
-              onPressed: () {
-                setState(() => _showPassword = !_showPassword);
-              },
-            ),
+            ],
           ),
-        ),
-        const SizedBox(height: 5),
-        const Text(
-          'Dejar en blanco si no deseas cambiar la contraseña',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
       ],
     );
   }
 
-  Widget _buildSaveButton() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: ElevatedButton(
-        onPressed: _updateProfile,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurple,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+  Widget _buildProfileInfo() {
+    final infoItems = [
+      _buildInfoTile(
+        icon: Icons.assignment_ind,
+        title: 'Identificación',
+        value: _userData['identificacion']?.toString() ?? 'No especificada',
+      ),
+      _buildInfoTile(
+        icon: Icons.person,
+        title: 'Nombre completo',
+        value:
+            '${_userData['nombre']?.toString() ?? ''} ${_userData['apellido']?.toString() ?? ''}',
+      ),
+      _buildInfoTile(
+        icon: Icons.email,
+        title: 'Correo electrónico',
+        value: _userData['email']?.toString() ?? 'No especificado',
+      ),
+      if (_userData['celular'] != null &&
+          (_userData['celular'] as String).isNotEmpty)
+        _buildInfoTile(
+          icon: Icons.phone,
+          title: 'Teléfono',
+          value: _userData['celular']?.toString() ?? '',
         ),
-        child: const Text(
-          'Guardar Cambios',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+      if (_userData['fechaNacimiento'] != null &&
+          (_userData['fechaNacimiento'] as String).isNotEmpty)
+        _buildInfoTile(
+          icon: Icons.cake,
+          title: 'Fecha de nacimiento',
+          value: _userData['fechaNacimiento']?.toString() ?? '',
+        ),
+    ];
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.deepPurple[800]),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Información personal',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple[800],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (infoItems.isNotEmpty) ...infoItems,
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.deepPurple),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(value),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
     );
   }
 
   Widget _buildBottomActions(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(top: BorderSide(color: Colors.grey[300]!)),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => UserListsScreen(userData: widget.userData),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.list),
+              label: const Text('Mis listas'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.deepPurple,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple[100],
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
               ),
-            ),
-            icon: Icon(Icons.list, color: Colors.deepPurple[800]),
-            label: Text(
-              'Mis Listas',
-              style: TextStyle(color: Colors.deepPurple[800], fontSize: 16),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => ListUserScreen(
+                          userId: _userData['identificacion'], // Esto es int
+                          userData: _userData,
+                        ),
+                  ),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: () => _logout(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[100],
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.logout),
+              label: const Text('Cerrar sesión'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-            ),
-            icon: Icon(Icons.logout, color: Colors.red[800]),
-            label: Text(
-              'Cerrar Sesión',
-              style: TextStyle(color: Colors.red[800], fontSize: 16),
+              onPressed: () => _logout(context),
             ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildProfileField({
-    required String label,
-    required TextEditingController controller,
-    required bool enabled,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        prefixIcon: _getIconForField(label),
-        filled: !enabled,
-        fillColor: Colors.grey[200],
-        labelStyle: TextStyle(
-          color: enabled ? Colors.deepPurple : Colors.grey[600],
-        ),
-      ),
-      style: TextStyle(color: enabled ? Colors.black : Colors.grey[600]),
-    );
-  }
-
-  Icon _getIconForField(String label) {
-    switch (label) {
-      case 'Identificación':
-        return const Icon(Icons.badge, color: Colors.deepPurple);
-      case 'Nombre':
-        return const Icon(Icons.person, color: Colors.deepPurple);
-      case 'Apellido':
-        return const Icon(Icons.person_outline, color: Colors.deepPurple);
-      case 'Email':
-        return const Icon(Icons.email, color: Colors.deepPurple);
-      case 'Celular':
-        return const Icon(Icons.phone, color: Colors.deepPurple);
-      case 'Ciudad':
-        return const Icon(Icons.location_city, color: Colors.deepPurple);
-      default:
-        return const Icon(Icons.edit, color: Colors.deepPurple);
-    }
   }
 }
