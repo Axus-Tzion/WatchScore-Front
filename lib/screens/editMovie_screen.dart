@@ -23,6 +23,7 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
 
   List<String> _actoresDisponibles = [];
   List<String> _directoresDisponibles = [];
+  bool cargandoResenas = true;
 
   @override
   void initState() {
@@ -89,28 +90,46 @@ class _EditMovieScreenState extends State<EditMovieScreen> {
       'https://watchscore-1.onrender.com/peliculas/actualizar/$id',
     );
 
-    final response = await http.put(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'titulo': tituloController.text,
-        'genero': generoController.text,
-        'lanzamiento': int.tryParse(lanzamientoController.text),
-        'sipnosis': sinopsisController.text,
-        'duracion': duracionController.text,
-        'calificacion': double.tryParse(calificacionController.text),
-        'director': directorController.text,
-        'actores':
-            actoresController.text.split(',').map((e) => e.trim()).toList(),
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      Navigator.pop(context, _guardarCambios);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al guardar los cambios')),
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'titulo': tituloController.text,
+          'genero': generoController.text,
+          'lanzamiento': int.tryParse(lanzamientoController.text),
+          'sipnosis': sinopsisController.text,
+          'duracion': duracionController.text,
+          'calificacion': double.tryParse(calificacionController.text),
+          'director': directorController.text,
+          'actores':
+              actoresController.text.split(',').map((e) => e.trim()).toList(),
+        }),
       );
+
+      if (response.statusCode == 200) {
+        // Devuelve los datos actualizados
+        Navigator.pop(context, {
+          'titulo': tituloController.text,
+          'genero': generoController.text,
+          'lanzamiento': int.tryParse(lanzamientoController.text),
+          'sipnosis': sinopsisController.text,
+          'duracion': duracionController.text,
+          'calificacion': double.tryParse(calificacionController.text),
+          'director': directorController.text,
+          'actores':
+              actoresController.text.split(',').map((e) => e.trim()).toList(),
+          'id': id,
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al guardar los cambios')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
     }
   }
 

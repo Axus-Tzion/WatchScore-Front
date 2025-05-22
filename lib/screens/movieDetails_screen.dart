@@ -23,12 +23,183 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   late Map<String, dynamic> movie;
   final TextEditingController _nombreListaController = TextEditingController();
   List<Map<String, dynamic>> _listasUsuario = [];
+  List<dynamic> resenas = [];
+  bool cargandoResenas = true;
   bool _creandoNuevaLista = false;
 
   @override
   void initState() {
     super.initState();
     movie = widget.movie;
+    _cargarResenas();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ModalRoute.of(context)?.isCurrent == false) {
+        _recargarDatos();
+      }
+    });
+  }
+
+  Future<void> _recargarDatos() async {
+    // Puedes hacer una nueva petición al servidor para asegurarte de tener los datos más actualizados
+    try {
+      final response = await http.get(
+        Uri.parse('https://watchscore-1.onrender.com/peliculas/${movie['id']}'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          movie = data;
+        });
+      }
+    } catch (e) {
+      print('Error al recargar datos: $e');
+    }
+
+    // También recarga las reseñas
+    await _cargarResenas();
+  }
+
+  Future<void> _cargarResenas() async {
+    setState(() => cargandoResenas = true);
+    try {
+      final peliculaTitulo = movie['titulo'];
+      print('Buscando reseñas para: $peliculaTitulo');
+
+      final url = Uri.parse(
+        'https://watchscore-1.onrender.com/resenas/peliculas/$peliculaTitulo',
+      );
+
+      final response = await http.get(url);
+      print('Código de respuesta: ${response.statusCode}');
+      print('Cuerpo de respuesta: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('Datos recibidos: $data');
+
+        setState(() {
+          resenas = List<dynamic>.from(data);
+          print('Reseñas cargadas: ${resenas.length}');
+        });
+      } else {
+        throw Exception('Error al cargar reseñas: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error al cargar reseñas: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al cargar reseñas: $e')));
+    } finally {
+      setState(() => cargandoResenas = false);
+    }
+  }
+
+  void _mostrarDialogoCrearResena() {
+    final TextEditingController comentarioController = TextEditingController();
+    final TextEditingController calificacionController =
+        TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Agregar Reseña'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: comentarioController,
+                  decoration: const InputDecoration(labelText: 'Comentario'),
+                  maxLines: 3,
+                ),
+                TextField(
+                  controller: calificacionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Calificación (1-5)',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final usuario = widget.userData['nombre'];
+                final comentario = comentarioController.text.trim();
+                final calificacion = int.tryParse(
+                  calificacionController.text.trim(),
+                );
+
+                if (usuario.isEmpty ||
+                    comentario.isEmpty ||
+                    calificacion == null ||
+                    calificacion < 1 ||
+                    calificacion > 5) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Por favor, completa todos los campos correctamente.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
+                try {
+                  final tituloPelicula = movie['titulo'];
+                  final userIdentificacion = widget.userData['identificacion'];
+
+                  final response = await http.post(
+                    Uri.parse(
+                      'https://watchscore-1.onrender.com/resenas/peliculas/$tituloPelicula/usuario/$userIdentificacion',
+                    ),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'comentario': comentario,
+                      'calificacion': calificacion,
+                    }),
+                  );
+
+                  if (response.statusCode == 201 ||
+                      response.statusCode == 200) {
+                    await _cargarResenas();
+                    setState(() {});
+                    Navigator.of(context).pop();
+
+                    await Future.delayed(const Duration(milliseconds: 100));
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('¡Reseña guardada exitosamente!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    throw Exception('Error al guardar reseña');
+                  }
+                } catch (e) {
+                  await _cargarResenas();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('¡Reseña guardada exitosamente!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _cargarListasUsuario() async {
@@ -42,6 +213,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
+
         setState(() {
           _listasUsuario =
               data
@@ -100,7 +272,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         body: body,
       );
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Lista creada exitosamente')),
         );
@@ -205,7 +377,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                                 );
                               }
                             },
-                            child: const Text('Crear y agregar'),
+                            child: const Text('Crear Lista'),
                           ),
                         ],
                       ),
@@ -245,7 +417,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           (context) => AlertDialog(
             title: const Text('Confirmar eliminación'),
             content: const Text(
-              '¿Estás segura de que deseas eliminar esta película?',
+              '¿Estás segura de que deseas eliminar esta pelicula?',
             ),
             actions: [
               TextButton(
@@ -277,13 +449,29 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         if (mounted) {
-          Navigator.pop(context, {'eliminado': true});
+          await showDialog(
+            context: context,
+            builder:
+                (_) => AlertDialog(
+                  title: const Text('Eliminación exitosa'),
+                  content: const Text(
+                    'La pelicula ha sido eliminada correctamente.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Aceptar'),
+                    ),
+                  ],
+                ),
+          );
+          if (mounted) Navigator.pop(context, true);
         }
       } else {
-        _mostrarError('Error al eliminar la película. Intenta de nuevo.');
+        _mostrarError('Error al eliminar la pelicula. Intenta de nuevo.');
       }
     } catch (e) {
-      _mostrarError('Error de conexión al eliminar la película.');
+      _mostrarError('Error de conexión al eliminar la pelicula.');
     }
   }
 
@@ -385,11 +573,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: Colors.black12,
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
@@ -503,6 +691,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               const SizedBox(height: 30),
             ],
 
+            // Botones
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -517,9 +706,18 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
                     if (resultado != null &&
                         resultado is Map<String, dynamic>) {
+                      // Actualiza el estado con los nuevos datos
                       setState(() {
                         movie = resultado;
                       });
+
+                      // Muestra un mensaje de confirmación
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Película actualizada correctamente'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
                     }
                   },
                   icon: const Icon(Icons.edit),
@@ -570,6 +768,100 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
                 ),
               ],
             ),
+
+            const SizedBox(height: 30),
+
+            // Sección Reseñas
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Reseñas',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.deepPurple[700],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add, color: Colors.deepPurple),
+                    onPressed: _mostrarDialogoCrearResena,
+                    tooltip: 'Agregar reseña',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (cargandoResenas)
+              const Center(child: CircularProgressIndicator())
+            else if (resenas.isEmpty)
+              const Text('No hay reseñas aún')
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children:
+                    resenas.map<Widget>((resena) {
+                      final usuario = resena['nombreUsuario'] ?? 'Anónimo';
+                      final comentario = resena['comentario'] ?? '';
+                      final calificacion =
+                          (resena['calificacion'] ?? 0).toDouble();
+
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              usuario,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: List.generate(5, (index) {
+                                if (calificacion >= index + 1) {
+                                  return const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 16,
+                                  );
+                                } else if (calificacion > index) {
+                                  return const Icon(
+                                    Icons.star_half,
+                                    color: Colors.amber,
+                                    size: 16,
+                                  );
+                                } else {
+                                  return const Icon(
+                                    Icons.star_border,
+                                    color: Colors.amber,
+                                    size: 16,
+                                  );
+                                }
+                              }),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(comentario),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+              ),
           ],
         ),
       ),
