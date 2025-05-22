@@ -170,9 +170,11 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                const FlutterLogo(
-                  size: 100,
-                ), // Cambia esto por tu logo si tienes uno
+                Image.asset(
+                  'assets/images/WatchScoreLogo.png',
+                  height: 120,
+                  width: 140,
+                ),
                 const SizedBox(height: 30),
                 const Text(
                   'Iniciar Sesión',
