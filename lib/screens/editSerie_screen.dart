@@ -46,7 +46,6 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
     duracionController = TextEditingController(
       text: serie['duracionCapitulo'].toString(),
     );
-
     calificacionController = TextEditingController(
       text: serie['calificacion'].toString(),
     );
@@ -59,9 +58,7 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
     final actores = serie['actores'] as List;
     actoresController = TextEditingController(
       text: actores
-          .map((a) {
-            return a is Map ? a['nombre'] ?? '' : a.toString();
-          })
+          .map((a) => a is Map ? a['nombre'] ?? '' : a.toString())
           .join(', '),
     );
 
@@ -96,32 +93,61 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
 
   Future<void> _guardarCambios() async {
     final id = widget.serie['id'];
-    final url = Uri.parse('https://watchscore-1.onrender.com/actualizar/$id');
-
-    final response = await http.put(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'titulo': tituloController.text,
-        'genero': generoController.text,
-        'lanzamiento': lanzamientoController.text,
-        'sinopsis': sinopsisController.text,
-        'temporadas': temporadasController.text,
-        'capitulos': capitulosController.text,
-        'duracionCapitulo': duracionController.text,
-        'calificacion': double.tryParse(calificacionController.text),
-        'director': directorController.text,
-        'actores':
-            actoresController.text.split(',').map((e) => e.trim()).toList(),
-      }),
+    final url = Uri.parse(
+      'https://watchscore-1.onrender.com/series/actualizar/$id',
     );
 
-    if (response.statusCode == 200) {
-      Navigator.pop(context, _guardarCambios);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al guardar los cambios')),
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'titulo': tituloController.text,
+          'genero': generoController.text,
+          'lanzamiento': int.tryParse(lanzamientoController.text),
+          'sinopsis': sinopsisController.text,
+          'temporadas': int.tryParse(temporadasController.text),
+          'capitulos': int.tryParse(capitulosController.text),
+          'duracionCapitulo': duracionController.text,
+          'calificacion': double.tryParse(calificacionController.text),
+          'director': directorController.text,
+          'actores':
+              actoresController.text
+                  .split(',')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList(),
+        }),
       );
+
+      if (response.statusCode == 200) {
+        Navigator.pop(context, {
+          'titulo': tituloController.text,
+          'genero': generoController.text,
+          'lanzamiento': int.tryParse(lanzamientoController.text),
+          'sinopsis': sinopsisController.text,
+          'temporadas': int.tryParse(temporadasController.text),
+          'capitulos': int.tryParse(capitulosController.text),
+          'duracionCapitulo': duracionController.text,
+          'calificacion': double.tryParse(calificacionController.text),
+          'director': directorController.text,
+          'actores':
+              actoresController.text
+                  .split(',')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList(),
+          'id': id,
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al guardar los cambios')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
     }
   }
 
@@ -144,11 +170,11 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
       child: Autocomplete<String>(
         initialValue: TextEditingValue(text: directorController.text),
         optionsBuilder: (TextEditingValue textEditingValue) {
-          return _directoresDisponibles.where((String option) {
-            return option.toLowerCase().contains(
+          return _directoresDisponibles.where(
+            (option) => option.toLowerCase().contains(
               textEditingValue.text.toLowerCase(),
-            );
-          });
+            ),
+          );
         },
         onSelected: (String selection) {
           directorController.text = selection;
@@ -188,8 +214,8 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
                     (actor) => Chip(
                       label: Text(actor),
                       onDeleted: () {
-                        listaActores.remove(actor);
                         setState(() {
+                          listaActores.remove(actor);
                           actoresController.text = listaActores.join(', ');
                         });
                       },
@@ -199,16 +225,17 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
         ),
         Autocomplete<String>(
           optionsBuilder: (TextEditingValue textEditingValue) {
-            return _actoresDisponibles.where((String option) {
-              return option.toLowerCase().contains(
+            return _actoresDisponibles.where(
+              (option) =>
+                  option.toLowerCase().contains(
                     textEditingValue.text.toLowerCase(),
                   ) &&
-                  !listaActores.contains(option);
-            });
+                  !listaActores.contains(option),
+            );
           },
           onSelected: (String selection) {
-            listaActores.add(selection);
             setState(() {
+              listaActores.add(selection);
               actoresController.text = listaActores.join(', ');
             });
           },
@@ -244,9 +271,9 @@ class _EditSerieScreenState extends State<EditSerieScreen> {
             _buildTextField(generoController, 'Género'),
             _buildTextField(lanzamientoController, 'Año de Lanzamiento'),
             _buildTextField(sinopsisController, 'Sinopsis'),
+            _buildTextField(duracionController, 'Duración'),
             _buildTextField(temporadasController, 'Temporadas'),
-            _buildTextField(capitulosController, 'Capitulos'),
-            _buildTextField(duracionController, 'Duración Capitulo'),
+            _buildTextField(capitulosController, 'Capítulos'),
             _buildTextField(calificacionController, 'Calificación'),
             _buildAutoCompleteDirector(),
             const SizedBox(height: 12),

@@ -29,8 +29,8 @@ class _MoviesListState extends State<MoviesList> {
   @override
   void initState() {
     super.initState();
-    _fetchMovies();
     _searchController.addListener(_onSearchChanged);
+    _fetchMovies();
   }
 
   @override
@@ -53,37 +53,36 @@ class _MoviesListState extends State<MoviesList> {
     try {
       final response = await http.get(
         Uri.parse('https://watchscore-1.onrender.com/peliculas/'),
+        headers: {
+          'Authorization': 'Bearer ${widget.userData['token']}',
+          'Content-Type': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
-        final data =
-            jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
 
-        // Filtrado inicial según los parámetros
         List<dynamic> filteredMovies = data;
 
         if (widget.showOnlyPopular) {
-          filteredMovies =
-              data.take(5).toList(); // Ejemplo: primeras 5 como populares
+          filteredMovies = data.take(5).toList();
         } else if (widget.showRecommendations) {
-          filteredMovies =
-              data
-                  .where((movie) => movie['id'] % 3 == 0)
-                  .toList(); // Ejemplo de recomendadas
+          filteredMovies = data.where((movie) => movie['id'] % 3 == 0).toList();
         }
 
         setState(() {
           _movies = data;
           _filteredMovies = filteredMovies;
           _isLoading = false;
+          _searchController.clear();
         });
-
-        _applySearchFilter();
       } else {
-        setState(() {
-          _error = 'Error al cargar películas: ${response.statusCode}';
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _error = 'Error al cargar películas: ${response.statusCode}';
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -98,7 +97,6 @@ class _MoviesListState extends State<MoviesList> {
 
     if (query.isEmpty) {
       setState(() {
-        // Mantener filtro original
         _filteredMovies =
             widget.showOnlyPopular
                 ? _movies.take(5).toList()
@@ -173,105 +171,113 @@ class _MoviesListState extends State<MoviesList> {
               ),
             const SizedBox(height: 12),
             Expanded(
-              child:
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _error != null
-                      ? Center(child: Text(_error!))
-                      : _filteredMovies.isEmpty
-                      ? const Center(child: Text('No se encontraron películas'))
-                      : GridView.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.72,
-                            ),
-                        itemCount: _filteredMovies.length,
-                        itemBuilder: (context, index) {
-                          final movie = _filteredMovies[index];
-                          return GestureDetector(
-                            onTap: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) => MovieDetailScreen(
-                                        movie: movie,
-                                        userData: widget.userData,
-                                      ),
-                                ),
-                              );
-                              if (result == true) {
-                                _fetchMovies();
-                              }
-                            },
-                            child: Card(
-                              color: Colors.white,
-                              shadowColor: Colors.deepPurple[200],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+              child: RefreshIndicator(
+                onRefresh: _fetchMovies,
+                child:
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _error != null
+                        ? Center(child: Text(_error!))
+                        : _filteredMovies.isEmpty
+                        ? const Center(
+                          child: Text('No se encontraron películas'),
+                        )
+                        : GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.72,
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.deepPurple[50],
+                          itemCount: _filteredMovies.length,
+                          itemBuilder: (context, index) {
+                            final movie = _filteredMovies[index];
+                            return GestureDetector(
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (_) => MovieDetailScreen(
+                                          movie: movie,
+                                          userData: widget.userData,
+                                        ),
+                                  ),
+                                );
+
+                                if (result != null &&
+                                    result is Map &&
+                                    result['recargar'] == true) {
+                                  _fetchMovies();
+                                }
+                              },
+                              child: Card(
+                                color: Colors.white,
+                                shadowColor: Colors.deepPurple[200],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.deepPurple[50],
+                                        ),
+                                        padding: const EdgeInsets.all(10),
+                                        child: const Icon(
+                                          Icons.movie,
+                                          size: 40,
+                                          color: Colors.deepPurple,
+                                        ),
                                       ),
-                                      padding: const EdgeInsets.all(10),
-                                      child: const Icon(
-                                        Icons.movie,
-                                        size: 40,
-                                        color: Colors.deepPurple,
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        movie['titulo'] ?? 'Sin título',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      movie['titulo'] ?? 'Sin título',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Género: ${movie['genero'] ?? 'N/A'}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Género: ${movie['genero'] ?? 'N/A'}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
+                                      Text(
+                                        'Duración: ${movie['duracion'] ?? 'Desconocida'}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      'Duración: ${movie['duracion'] ?? 'Desconocida'}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
+                                      Text(
+                                        'Director: ${movie['director']?['nombre'] ?? 'Desconocido'}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      'Director: ${movie['director']?['nombre'] ?? 'Desconocido'}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        ),
+              ),
             ),
           ],
         ),
