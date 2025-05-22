@@ -23,12 +23,12 @@ class _DetailsListScreenState extends State<DetailsListScreen> {
     ];
   }
 
-  /*Future<void> _eliminarDeLista(dynamic item) async {
-    final idLista = widget.lista['id'];
-    final idContenido = item['id'];
+  Future<void> _eliminarDeLista(dynamic item) async {
+    final nombreLista = widget.lista['nombre'];
+    final tituloContenido = item['titulo'];
 
     final url = Uri.parse(
-      'https://watchscore-1.onrender.com/listas/$idLista/$idContenido',
+      'https://watchscore-1.onrender.com/listas/eliminar/$nombreLista/peliculas/$tituloContenido',
     );
 
     try {
@@ -50,7 +50,7 @@ class _DetailsListScreenState extends State<DetailsListScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Error de conexión')));
     }
-  }*/
+  }
 
   void _verDetalles(dynamic item) {
     showDialog(
@@ -109,7 +109,7 @@ class _DetailsListScreenState extends State<DetailsListScreen> {
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {}, //=> _eliminarDeLista(item),
+                          onPressed: () => _eliminarDeLista(item),
                         ),
                         onTap: () => _verDetalles(item),
                       ),
