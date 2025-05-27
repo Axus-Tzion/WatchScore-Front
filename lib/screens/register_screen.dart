@@ -11,6 +11,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _identificacionController =
+      TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _apellidoController = TextEditingController();
@@ -38,8 +40,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register(BuildContext context) async {
-    // Validar campos vacíos
-    if (_emailController.text.isEmpty ||
+    if (_identificacionController.text.isEmpty ||
+        _emailController.text.isEmpty ||
         _nombreController.text.isEmpty ||
         _apellidoController.text.isEmpty ||
         _celularController.text.isEmpty ||
@@ -52,36 +54,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (!RegExp(r'^[0-9]+$').hasMatch(_identificacionController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La identificación debe contener solo números'),
+        ),
+      );
+      return;
+    }
+
+    if (!RegExp(r'^[0-9]+$').hasMatch(_celularController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El celular debe contener solo números')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8860/usuarios/'),
+        Uri.parse('https://watchscore-1.onrender.com/usuarios/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'identificacion': int.parse(_identificacionController.text),
           'email': _emailController.text,
           'nombre': _nombreController.text,
           'apellido': _apellidoController.text,
-          'celular': _celularController.text,
+          'celular': int.parse(_celularController.text),
           'fechaNacimiento': _fechaNacimientoController.text,
           'ciudad': _ciudadController.text,
           'contrasena': _contrasenaController.text,
         }),
       );
 
-      if (response.statusCode == 200) {
-        // Registro exitoso
+      if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
-        Navigator.pop(context); // Regresar al login
+        Navigator.pop(context);
       } else {
-        // Error en el registro
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en registro: ${response.body}')),
-        );
+        String errorMessage;
+        try {
+          final errorResponse = jsonDecode(utf8.decode(response.bodyBytes));
+          errorMessage =
+              errorResponse['message']?.toString() ?? 'Error desconocido';
+        } catch (e) {
+          errorMessage = utf8.decode(response.bodyBytes); // Para texto plano
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $errorMessage')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,8 +133,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            TextField(
+              controller: _identificacionController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Número de Identificación',
+                prefixIcon: Icon(Icons.badge, color: Colors.deepPurple),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _nombreController,
               decoration: const InputDecoration(
